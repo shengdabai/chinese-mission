@@ -6,13 +6,15 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-dm-sans",
   display: "swap",
+  preload: false,
 });
 
 const notoSansSC = Noto_Sans_SC({
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["400", "700"],
   variable: "--font-noto-sc",
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {

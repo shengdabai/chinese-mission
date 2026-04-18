@@ -24,6 +24,7 @@ export default function ChatPage() {
   const params = useParams();
   const router = useRouter();
   const [mission, setMission] = useState<Mission | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [taskStatus, setTaskStatus] = useState<string>("in_progress");
@@ -36,7 +37,7 @@ export default function ChatPage() {
   const [voiceMuted, setVoiceMuted] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const turnIdCounter = useRef(0);
+  const turnIdCounter = useRef(1);
   const lastSpokenTurnId = useRef<string | null>(null);
 
   // Track session data for debrief
@@ -53,6 +54,10 @@ export default function ChatPage() {
   });
 
   useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!mission) setLoadError(true);
+    }, 5000);
+
     import("@/lib/data/scenarios").then((mod) => {
       const m = mod.getMission(params.id as string);
       if (m) {
@@ -67,8 +72,13 @@ export default function ChatPage() {
           timestamp: new Date().toISOString(),
         };
         setTurns([openingTurn]);
+      } else {
+        setLoadError(true);
       }
     });
+
+    return () => clearTimeout(timeout);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   const { speak, stopSpeaking } = useVoice({ lang: "zh-CN", rate: 0.8 });
@@ -250,7 +260,20 @@ export default function ChatPage() {
   if (!mission) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <p className="text-slate-500">Loading...</p>
+        {loadError ? (
+          <div className="text-center space-y-3">
+            <p className="text-slate-700 font-medium">Mission not found</p>
+            <p className="text-slate-400 text-sm">ID &quot;{params.id}&quot; does not match any mission.</p>
+            <button
+              onClick={() => router.push("/missions")}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm hover:bg-indigo-700"
+            >
+              Back to Missions
+            </button>
+          </div>
+        ) : (
+          <p className="text-slate-500">Loading...</p>
+        )}
       </div>
     );
   }

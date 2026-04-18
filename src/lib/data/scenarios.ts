@@ -1863,6 +1863,15 @@ export function getMission(missionIdOrCode: string): Mission | undefined {
     );
     if (found) return found;
   }
+  // Numeric URL param fallback: "1" → "m1", "2" → "m2", etc.
+  if (/^\d+$/.test(missionIdOrCode)) {
+    for (const scenario of scenarios) {
+      const found = scenario.missions.find(
+        (m) => m.id === `m${missionIdOrCode}`,
+      );
+      if (found) return found;
+    }
+  }
   return undefined;
 }
 

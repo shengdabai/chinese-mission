@@ -6,6 +6,18 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
+    try {
+      const existing = localStorage.getItem("chinese-mission-user");
+      if (existing) {
+        const parsed = JSON.parse(existing);
+        if (parsed.onboardingCompleted) {
+          router.replace("/missions");
+          return;
+        }
+      }
+    } catch {
+      // ignore malformed data
+    }
     router.replace("/onboarding");
   }, [router]);
 

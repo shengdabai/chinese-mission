@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 type Goal = "survival" | "social" | "work" | "travel";
@@ -31,6 +31,19 @@ export default function OnboardingPage() {
   const [goal, setGoal] = useState<Goal | null>(null);
   const [level, setLevel] = useState<Level | null>(null);
   const [mode, setMode] = useState<Mode>("mixed");
+  const [isReturning, setIsReturning] = useState(false);
+
+  useEffect(() => {
+    const existing = localStorage.getItem("chinese-mission-user");
+    if (existing) {
+      try {
+        const parsed = JSON.parse(existing);
+        if (parsed.onboardingCompleted) setIsReturning(true);
+      } catch {
+        // ignore malformed data
+      }
+    }
+  }, []);
 
   const handleStart = () => {
     if (!goal || !level) return;
@@ -53,6 +66,19 @@ export default function OnboardingPage() {
             />
           ))}
         </div>
+
+        {/* Returning user banner */}
+        {isReturning && (
+          <div className="mb-6 flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+            <span className="text-sm text-emerald-700">Welcome back! Ready to continue?</span>
+            <button
+              onClick={() => router.push("/missions")}
+              className="text-sm font-semibold text-emerald-700 hover:text-emerald-900 underline"
+            >
+              Continue Learning →
+            </button>
+          </div>
+        )}
 
         {/* Step 0: Goal */}
         {step === 0 && (

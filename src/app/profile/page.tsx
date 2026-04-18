@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { scenarioMeta } from "@/lib/data/scenario-meta";
 
 interface UserData {
   goal: string;
@@ -51,41 +52,36 @@ export default function ProfilePage() {
       phrasebook = [];
     }
 
-    import("@/lib/data/scenarios").then((mod) => {
-      const allScenarios = mod.scenarios;
-      const scenarioStats: Record<string, { completed: number; total: number }> = {};
-      let totalMissions = 0;
+    const scenarioStats: Record<string, { completed: number; total: number }> = {};
+    let totalMissions = 0;
 
-      for (const scenario of allScenarios) {
-        const completedInScenario = scenario.missions.filter((m: { id: string }) =>
-          completed.includes(m.id)
-        ).length;
-        scenarioStats[scenario.nameEn] = {
-          completed: completedInScenario,
-          total: scenario.missions.length,
-        };
-        totalMissions += scenario.missions.length;
-      }
+    for (const scenario of scenarioMeta) {
+      const completedInScenario = scenario.missionIds.filter((id) =>
+        completed.includes(id)
+      ).length;
+      scenarioStats[scenario.nameEn] = {
+        completed: completedInScenario,
+        total: scenario.missionIds.length,
+      };
+      totalMissions += scenario.missionIds.length;
+    }
 
-      // Determine strong/weak scenarios
-      const strongPoints: string[] = [];
-      const weakPoints: string[] = [];
-      for (const [name, stats] of Object.entries(scenarioStats)) {
-        const ratio = stats.total > 0 ? stats.completed / stats.total : 0;
-        if (ratio >= 0.5) strongPoints.push(name);
-        else if (stats.total > 0) weakPoints.push(name);
-      }
+    // Determine strong/weak scenarios
+    const strongPoints: string[] = [];
+    const weakPoints: string[] = [];
+    for (const [name, stats] of Object.entries(scenarioStats)) {
+      const ratio = stats.total > 0 ? stats.completed / stats.total : 0;
+      if (ratio >= 0.5) strongPoints.push(name);
+      else if (stats.total > 0) weakPoints.push(name);
+    }
 
-      setSkills({
-        scenarioStats,
-        totalCompleted: completed.length,
-        totalMissions,
-        expressionCount: phrasebook.length,
-        weakPoints: weakPoints.length > 0 ? weakPoints : ["Not enough data yet"],
-        strongPoints: strongPoints.length > 0 ? strongPoints : ["Complete some missions first!"],
-      });
-    }).catch(() => {
-      setSkills(null);
+    setSkills({
+      scenarioStats,
+      totalCompleted: completed.length,
+      totalMissions,
+      expressionCount: phrasebook.length,
+      weakPoints: weakPoints.length > 0 ? weakPoints : ["Not enough data yet"],
+      strongPoints: strongPoints.length > 0 ? strongPoints : ["Complete some missions first!"],
     });
   }, [router]);
 

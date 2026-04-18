@@ -11,22 +11,44 @@ export default function WarmupPage() {
   const router = useRouter();
   const [mission, setMission] = useState<Mission | null>(null);
   const [scenario, setScenario] = useState<Scenario | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!mission) setLoadError(true);
+    }, 5000);
+
     import("@/lib/data/scenarios").then((mod) => {
       const m = mod.getMission(params.id as string);
       if (m) {
         setMission(m);
         const s = mod.getScenario(m.scenarioId);
         if (s) setScenario(s);
+      } else {
+        setLoadError(true);
       }
     });
+
+    return () => clearTimeout(timeout);
   }, [params.id]);
 
   if (!mission) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <p className="text-slate-500">Loading mission...</p>
+        {loadError ? (
+          <div className="text-center space-y-3">
+            <p className="text-slate-700 font-medium">Mission not found</p>
+            <p className="text-slate-400 text-sm">ID &quot;{params.id}&quot; does not match any mission.</p>
+            <button
+              onClick={() => router.push("/missions")}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm hover:bg-indigo-700"
+            >
+              Back to Missions
+            </button>
+          </div>
+        ) : (
+          <p className="text-slate-500">Loading mission...</p>
+        )}
       </div>
     );
   }
