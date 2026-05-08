@@ -1,0 +1,41 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next.js
+.next/
+out/
+
+# production
+build/
+dist/
+
+# env files
+.env
+.env.local
+.env.*.local
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# testing
+coverage/
+
+# turbo
+.turbo
+
+# lock files
+bun.lock
+package-lock.json
+
+# misc
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+
+# omc / gstack
+.omc/
+.gstack/

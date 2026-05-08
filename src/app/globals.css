@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-chinese: var(--font-noto-sc), "PingFang SC", "Microsoft YaHei", sans-serif;
+
+  /* Category accent colors */
+  --color-survival: #f59e0b;
+  --color-social: #10b981;
+  --color-work: #6366f1;
+  --color-travel: #ec4899;
+}
+
+/* Chinese text uses dedicated font */
+:lang(zh), [lang="zh"] {
+  font-family: var(--font-chinese);
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1.2); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 1; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+/* Dark mode baseline for pages that currently rely on light utility classes. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: #020617;
+    color: #e2e8f0;
+  }
+
+  .bg-white {
+    background-color: #0f172a !important;
+  }
+
+  .bg-slate-50 {
+    background-color: #020617 !important;
+  }
+
+  .bg-slate-100 {
+    background-color: #111827 !important;
+  }
+
+  .text-slate-900 {
+    color: #f8fafc !important;
+  }
+
+  .text-slate-700 {
+    color: #e2e8f0 !important;
+  }
+
+  .text-slate-600 {
+    color: #cbd5e1 !important;
+  }
+
+  .text-slate-500,
+  .text-slate-400 {
+    color: #94a3b8 !important;
+  }
+
+  .border-slate-200,
+  .border-slate-100,
+  .border-indigo-200,
+  .border-amber-100 {
+    border-color: #334155 !important;
+  }
+
+  .hover\:bg-slate-50:hover,
+  .hover\:bg-slate-100:hover {
+    background-color: #1e293b !important;
+  }
+}
