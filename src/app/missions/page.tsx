@@ -28,8 +28,10 @@ export default function MissionsPage() {
   const [completedMissions, setCompletedMissions] = useState<string[]>([]);
   const [scenarios, setScenarios] = useState<ScenarioData[]>([]);
   const [userGoal, setUserGoal] = useState<string>("survival");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const userData = localStorage.getItem("chinese-mission-user");
     if (!userData) {
       router.replace("/onboarding");
@@ -91,7 +93,7 @@ export default function MissionsPage() {
             <h1 className="text-xl font-bold text-slate-900">Chinese Mission</h1>
             <p className="text-xs text-slate-500">
               {completedMissions.length} missions completed
-              {(() => {
+              {mounted && (() => {
                 const q = getQuotaSummary();
                 if (q.premium) return <span className="ml-2 text-indigo-600 font-medium">· Premium ∞</span>;
                 return <span className="ml-2 text-slate-400">· {q.remaining}/{q.limit} 今日剩余</span>;
