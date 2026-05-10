@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import GlossLine from "@/components/GlossLine";
 import SpeakerButton from "@/components/SpeakerButton";
+import { Paywall } from "@/components/Paywall";
+import { canStartMission, consumeAttempt, getQuotaSummary } from "@/lib/entitlements";
 import type { Mission, Scenario } from "@/lib/types";
 
 export default function WarmupPage() {
@@ -12,6 +13,7 @@ export default function WarmupPage() {
   const [mission, setMission] = useState<Mission | null>(null);
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -132,12 +134,20 @@ export default function WarmupPage() {
 
         {/* Actions */}
         <div className="flex gap-3 pt-2">
-          <Link
-            href={`/missions/${mission.id}/chat`}
+          <button
+            type="button"
+            onClick={() => {
+              if (!canStartMission()) {
+                setPaywallOpen(true);
+                return;
+              }
+              consumeAttempt();
+              router.push(`/missions/${mission.id}/chat`);
+            }}
             className="flex-1 py-4 bg-indigo-600 text-white text-center text-lg font-semibold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
           >
             Start Conversation
-          </Link>
+          </button>
         </div>
 
         <div className="text-center">
@@ -165,6 +175,7 @@ export default function WarmupPage() {
           </div>
         </div>
       </div>
+      {paywallOpen && <Paywall onClose={() => setPaywallOpen(false)} resetsAt={getQuotaSummary().resetsAt} />}
     </div>
   );
 }

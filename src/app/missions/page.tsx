@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getQuotaSummary } from "@/lib/entitlements";
 
 interface ScenarioData {
   id: string;
@@ -88,7 +89,14 @@ export default function MissionsPage() {
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-900">Chinese Mission</h1>
-            <p className="text-xs text-slate-500">{completedMissions.length} missions completed</p>
+            <p className="text-xs text-slate-500">
+              {completedMissions.length} missions completed
+              {(() => {
+                const q = getQuotaSummary();
+                if (q.premium) return <span className="ml-2 text-indigo-600 font-medium">· Premium ∞</span>;
+                return <span className="ml-2 text-slate-400">· {q.remaining}/{q.limit} 今日剩余</span>;
+              })()}
+            </p>
           </div>
           <div className="flex gap-2">
             <Link
