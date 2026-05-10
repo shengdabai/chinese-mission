@@ -39,3 +39,4 @@ next-env.d.ts
 # omc / gstack
 .omc/
 .gstack/
+.vercel
