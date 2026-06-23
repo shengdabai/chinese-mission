@@ -40,8 +40,11 @@ next-env.d.ts
 .omc/
 .gstack/
 .vercel
+
+# capacitor www build output (served via server.url in production)
+www/
+
 # Codex governance: local secrets and machine state
-.env
 .env.*
 !.env.example
 !.env.*.example
@@ -51,7 +54,5 @@ next-env.d.ts
 id_rsa
 id_dsa
 .npmrc
-.DS_Store
-.omc/
 .codex/
 .claude/local/

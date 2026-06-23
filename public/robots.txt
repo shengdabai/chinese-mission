@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Internal tool page — not part of the learning app
+Disallow: /teaching-pipeline

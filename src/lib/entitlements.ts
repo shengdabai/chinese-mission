@@ -101,8 +101,12 @@ export function getQuotaSummary(): {
   };
 }
 
-// Dev-only premium toggle for QA. Remove or guard behind `process.env.NODE_ENV === "development"` in production.
+/**
+ * Dev-only premium toggle for QA.
+ * Guarded behind NODE_ENV check — no-ops in production to prevent paywall bypass via DevTools.
+ */
 export function devSetPremium(on: boolean): void {
+  if (process.env.NODE_ENV !== "development") return;
   if (typeof window === "undefined") return;
   if (on) localStorage.setItem(PREMIUM_KEY, "true");
   else localStorage.removeItem(PREMIUM_KEY);
