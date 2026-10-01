@@ -16,18 +16,25 @@ const VOICES: Record<string, string> = {
 
 const DEFAULT_VOICE = VOICES.female;
 const MAX_TEXT_LENGTH = 400;
+const VOICE_ID_PATTERN = /^[a-z]{2,3}-[A-Z]{2}(-[A-Za-z]+)?-[A-Za-z]+Neural$/;
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  let body: { text?: string; voice?: string; rate?: number };
+  let body: { text?: unknown; voice?: unknown; rate?: unknown };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const text = (body.text || "").trim();
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  if (body.text !== undefined && typeof body.text !== "string") {
+    return NextResponse.json({ error: "text must be a string" }, { status: 400 });
+  }
+  const text = (typeof body.text === "string" ? body.text : "").trim();
   if (!text) {
     return NextResponse.json({ error: "Missing text" }, { status: 400 });
   }
@@ -38,12 +45,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const voiceKey = body.voice || "female";
-  const voice = VOICES[voiceKey] || (voiceKey.includes("-") ? voiceKey : DEFAULT_VOICE);
+  // The voice id is interpolated into SSML by the TTS client, so only accept
+  // curated keys or a strictly well-formed neural voice id (no markup).
+  const voiceKey = typeof body.voice === "string" ? body.voice : "female";
+  const voice = Object.hasOwn(VOICES, voiceKey)
+    ? VOICES[voiceKey]
+    : VOICE_ID_PATTERN.test(voiceKey)
+      ? voiceKey
+      : DEFAULT_VOICE;
 
   // Edge TTS rate: -50% to +100%, "+0%" = neutral
   // Map our 0.7-1.2 multiplier scale to Edge prosody
-  const rateMultiplier = body.rate ?? 0.9;
+  const rateMultiplier =
+    typeof body.rate === "number" && Number.isFinite(body.rate) ? body.rate : 0.9;
   const ratePct = Math.round((rateMultiplier - 1) * 100);
   const ratePctClamped = Math.max(-50, Math.min(50, ratePct));
   const rateStr = ratePctClamped >= 0 ? `+${ratePctClamped}%` : `${ratePctClamped}%`;

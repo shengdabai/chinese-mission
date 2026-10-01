@@ -3,6 +3,7 @@ import { callAI, parseJSON, isAIConfigured } from "@/lib/engine/ai-client";
 import { buildDebriefPrompt } from "@/lib/engine/prompts";
 import { generateDebrief } from "@/lib/engine/dialogue";
 import { getMission } from "@/lib/data/scenarios";
+import { validateDebriefBody } from "@/lib/engine/validate-request";
 import type { Session, DebriefResult, GlossItem } from "@/lib/types";
 
 interface DebriefRequest {
@@ -43,12 +44,17 @@ interface AIDebriefOutput {
 
 export async function POST(request: NextRequest) {
   // Parse body once, available in both try and catch
-  let body: DebriefRequest;
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
+  const invalid = validateDebriefBody(raw);
+  if (invalid) {
+    return NextResponse.json({ error: invalid }, { status: 400 });
+  }
+  const body = raw as DebriefRequest;
 
   try {
     const mission = getMission(body.missionId);

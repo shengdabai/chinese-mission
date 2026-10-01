@@ -27,20 +27,30 @@ function readQuota(): DailyQuota {
   try {
     const raw = localStorage.getItem(QUOTA_KEY);
     if (!raw) return { date: todayUtc(), attemptsUsed: 0 };
-    const parsed = JSON.parse(raw) as DailyQuota;
-    if (parsed.date !== todayUtc()) {
-      // New day, reset
+    const parsed = JSON.parse(raw) as Partial<DailyQuota> | null;
+    if (!parsed || parsed.date !== todayUtc()) {
+      // New day (or unreadable record), reset
       return { date: todayUtc(), attemptsUsed: 0 };
     }
-    return parsed;
+    // A corrupted/tampered counter (negative, NaN, string...) must never widen the quota.
+    const used = parsed.attemptsUsed;
+    const attemptsUsed =
+      typeof used === "number" && Number.isInteger(used) && used >= 0 ? used : 0;
+    return { date: parsed.date, attemptsUsed };
   } catch {
     return { date: todayUtc(), attemptsUsed: 0 };
   }
 }
 
-function writeQuota(q: DailyQuota): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(QUOTA_KEY, JSON.stringify(q));
+function writeQuota(q: DailyQuota): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    localStorage.setItem(QUOTA_KEY, JSON.stringify(q));
+    return true;
+  } catch {
+    // Storage full / blocked (private mode): report it instead of crashing the click handler.
+    return false;
+  }
 }
 
 /**
@@ -49,7 +59,14 @@ function writeQuota(q: DailyQuota): void {
  */
 export function isPremium(): boolean {
   if (typeof window === "undefined") return false;
-  return localStorage.getItem(PREMIUM_KEY) === "true";
+  // The debug flag is a QA toggle only. In production builds it must not grant
+  // premium: anyone can write localStorage from DevTools.
+  if (process.env.NODE_ENV === "production") return false;
+  try {
+    return localStorage.getItem(PREMIUM_KEY) === "true";
+  } catch {
+    return false;
+  }
 }
 
 export function attemptsRemaining(): number {
@@ -73,7 +90,9 @@ export function consumeAttempt(): { ok: boolean; remaining: number } {
     return { ok: false, remaining: 0 };
   }
   const updated = { date: q.date, attemptsUsed: q.attemptsUsed + 1 };
-  writeQuota(updated);
+  if (!writeQuota(updated)) {
+    return { ok: false, remaining: Math.max(0, FREE_DAILY_LIMIT - q.attemptsUsed) };
+  }
   return { ok: true, remaining: FREE_DAILY_LIMIT - updated.attemptsUsed };
 }
 

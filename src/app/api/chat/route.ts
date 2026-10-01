@@ -3,6 +3,7 @@ import { callAI, parseJSON, isAIConfigured } from "@/lib/engine/ai-client";
 import { buildPolicyPrompt, buildNpcPrompt } from "@/lib/engine/prompts";
 import { processUserInput, detectScript } from "@/lib/engine/dialogue";
 import { getMission } from "@/lib/data/scenarios";
+import { validateChatBody } from "@/lib/engine/validate-request";
 import type { Mission, Session } from "@/lib/types";
 
 interface ChatRequest {
@@ -35,8 +36,19 @@ interface NpcOutput {
 }
 
 export async function POST(request: NextRequest) {
+  let raw: unknown;
   try {
-    const body: ChatRequest = await request.json();
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const invalid = validateChatBody(raw);
+  if (invalid) {
+    return NextResponse.json({ error: invalid }, { status: 400 });
+  }
+
+  try {
+    const body = raw as ChatRequest;
     const mission = getMission(body.missionId);
 
     if (!mission) {
