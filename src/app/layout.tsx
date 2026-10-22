@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { configuredSiteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
+  // Resolves the Open Graph / Twitter image URLs to absolute ones. Same host as the canonical URL below unless NEXT_PUBLIC_SITE_URL overrides it.
+  metadataBase: new URL(configuredSiteUrl() ?? "https://chinese-mission.vercel.app"),
   title: {
     default: "Chinese Mission — AI-Powered Task-Based Chinese Learning",
     template: "%s | Chinese Mission",
@@ -14,6 +17,11 @@ export const metadata: Metadata = {
     description: "Practice real-world Chinese with AI. Complete missions in cafe, restaurant, hotel, travel, social, and work scenarios.",
     type: "website",
     locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Chinese Mission — AI-Powered Task-Based Chinese Learning",
+    description: "Practice real-world Chinese with AI. Complete missions in cafe, restaurant, hotel, travel, social, and work scenarios.",
   },
   robots: "index, follow",
   alternates: {

@@ -1,6 +1,7 @@
 /**
  * Per-client sliding-window rate limiter for the public API routes
- * (/api/chat, /api/debrief, /api/tts), which call paid services.
+ * (/api/chat, /api/debrief, /api/tts), which call paid services, and for the
+ * /api/event funnel counter, which does not.
  *
  * Best effort only: counters live in this process's memory. On serverless
  * hosting (Vercel) every warm instance keeps its own counters and a cold start
@@ -14,6 +15,8 @@ export const RATE_LIMITS = {
   chat: { limit: 30, windowMs: 60_000 },
   debrief: { limit: 10, windowMs: 60_000 },
   tts: { limit: 30, windowMs: 60_000 },
+  // Funnel counters (/api/event) call no paid service; the cap only keeps a script from flooding the logs.
+  event: { limit: 60, windowMs: 60_000 },
 } as const;
 
 export type RateLimitScope = keyof typeof RATE_LIMITS;

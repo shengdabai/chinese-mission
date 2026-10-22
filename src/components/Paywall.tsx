@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { track } from "@/lib/track";
 
 interface PaywallProps {
   onClose: () => void;
@@ -14,6 +16,11 @@ const PRICING = {
 
 export function Paywall({ onClose, resetsAt }: PaywallProps) {
   const resetDate = resetsAt ? new Date(resetsAt).toLocaleDateString("zh-CN", { month: "long", day: "numeric" }) : "";
+
+  // The paywall is mounted only while it is shown, so mounting is the view.
+  useEffect(() => {
+    track("paywall_view");
+  }, []);
 
   return (
     <div
@@ -46,6 +53,7 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
           <button
             type="button"
             data-pricing-id={PRICING.yearly.id}
+            onClick={() => track("upgrade_click", { plan: PRICING.yearly.id, source: "paywall" })}
             className="relative w-full rounded-2xl border-2 border-indigo-500 bg-indigo-50 p-4 text-left transition hover:bg-indigo-100"
           >
             <div className="absolute -top-2 left-4 rounded-full bg-indigo-500 px-2 py-0.5 text-xs font-semibold text-white">
@@ -64,6 +72,7 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
           <button
             type="button"
             data-pricing-id={PRICING.monthly.id}
+            onClick={() => track("upgrade_click", { plan: PRICING.monthly.id, source: "paywall" })}
             className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-slate-300 hover:bg-slate-50"
           >
             <div className="flex items-baseline justify-between">

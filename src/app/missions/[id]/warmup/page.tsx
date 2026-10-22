@@ -5,6 +5,7 @@ import GlossLine from "@/components/GlossLine";
 import SpeakerButton from "@/components/SpeakerButton";
 import { Paywall } from "@/components/Paywall";
 import { canStartMission, consumeAttempt, getQuotaSummary } from "@/lib/entitlements";
+import { track } from "@/lib/track";
 import type { Mission, Scenario } from "@/lib/types";
 
 export default function WarmupPage() {
@@ -142,6 +143,7 @@ export default function WarmupPage() {
                 return;
               }
               consumeAttempt();
+              track("trial_start", { mission_id: mission.id });
               router.push(`/missions/${mission.id}/chat`);
             }}
             className="flex-1 py-4 bg-indigo-600 text-white text-center text-lg font-semibold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TrackedLink } from "@/components/Tracked";
 
 export const revalidate = 3600; // revalidate every hour
 
@@ -51,12 +52,14 @@ export default function LandingPage() {
           AI 驱动的沉浸式中文对话练习，在真实场景任务中学习
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <Link
+          <TrackedLink
             href="/onboarding"
+            event="cta_click"
+            eventProps={{ where: "hero" }}
             className="rounded-xl bg-indigo-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg transition hover:bg-indigo-700 hover:shadow-xl"
           >
             Start Free — 3 Daily Attempts
-          </Link>
+          </TrackedLink>
           <Link
             href="/pricing"
             className="rounded-xl border-2 border-slate-200 bg-white px-8 py-3.5 text-base font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-slate-50"

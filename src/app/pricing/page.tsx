@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TrackedButton } from "@/components/Tracked";
 
 export const metadata = {
   title: "Chinese Mission — Pricing 价格方案",
@@ -116,12 +117,13 @@ export default function PricingPage() {
                 <span>iOS App 完整体验</span>
               </li>
             </ul>
-            <button
-              type="button"
+            <TrackedButton
+              event="upgrade_click"
+              eventProps={{ plan: "premium", source: "pricing" }}
               className="mt-8 block w-full rounded-xl bg-indigo-600 py-3 text-center text-sm font-semibold text-white transition hover:bg-indigo-700"
             >
               Upgrade to Premium →
-            </button>
+            </TrackedButton>
           </div>
         </div>
 
