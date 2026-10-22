@@ -35,17 +35,20 @@ interface Bucket {
   windowMs: number;
 }
 
-// Map iteration order doubles as least-recently-used order (see checkRateLimit).
 const buckets = new Map<string, Bucket>();
 let lastSweep = 0;
 
-function sweep(now: number): void {
-  if (now - lastSweep < SWEEP_INTERVAL_MS) return;
-  lastSweep = now;
+function purgeExpired(now: number): void {
   for (const [key, bucket] of buckets) {
     const newest = bucket.hits[bucket.hits.length - 1];
     if (newest === undefined || newest <= now - bucket.windowMs) buckets.delete(key);
   }
+}
+
+function sweep(now: number): void {
+  if (now - lastSweep < SWEEP_INTERVAL_MS) return;
+  lastSweep = now;
+  purgeExpired(now);
 }
 
 export function checkRateLimit(
@@ -56,17 +59,17 @@ export function checkRateLimit(
 ): RateLimitResult {
   sweep(now);
 
-  const bucket = buckets.get(key) ?? { hits: [], windowMs };
+  let bucket = buckets.get(key);
+  if (!bucket) {
+    if (buckets.size >= MAX_BUCKETS) purgeExpired(now);
+    // Still full of live counters: refuse the new client. Evicting a live counter would reset that client's quota.
+    if (buckets.size >= MAX_BUCKETS) return { allowed: false, remaining: 0, retryAfterSec: Math.ceil(windowMs / 1000) };
+    bucket = { hits: [], windowMs };
+    buckets.set(key, bucket);
+  }
   bucket.windowMs = windowMs;
   const cutoff = now - windowMs;
   bucket.hits = bucket.hits.filter((t) => t > cutoff);
-
-  // Re-insert so this key moves to the back of the Map (most recently used).
-  buckets.delete(key);
-  buckets.set(key, bucket);
-  while (buckets.size > MAX_BUCKETS) {
-    buckets.delete(buckets.keys().next().value as string);
-  }
 
   if (bucket.hits.length >= limit) {
     // Blocked attempts are not recorded, so hammering does not extend the block.

@@ -62,6 +62,17 @@ describe("checkRateLimit", () => {
     for (let i = 0; i < MAX_BUCKETS + 25; i++) checkRateLimit(`spoof-${i}`, 5, 60_000, 1);
     expect(rateLimitBucketCount()).toBe(MAX_BUCKETS);
   });
+
+  it("a flood of new keys cannot evict a live counter and reset its quota", () => {
+    for (let i = 0; i < 5; i++) checkRateLimit("victim", 5, 60_000, 1);
+    expect(checkRateLimit("victim", 5, 60_000, 1).allowed).toBe(false);
+    for (let i = 0; i < MAX_BUCKETS + 25; i++) checkRateLimit(`spoof-${i}`, 5, 60_000, 2);
+    expect(checkRateLimit("victim", 5, 60_000, 3).allowed).toBe(false);
+    // while every slot holds a live counter, a new client is refused rather than let in uncounted
+    expect(checkRateLimit("newcomer", 5, 60_000, 3).allowed).toBe(false);
+    // once those windows pass, the expired counters make room again
+    expect(checkRateLimit("newcomer", 5, 60_000, 60_010).allowed).toBe(true);
+  });
 });
 
 describe("clientIp", () => {
