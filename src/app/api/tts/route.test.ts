@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 
 const calls: Array<{ voice: string; rate: string }> = [];
 let lastVoice = "";
+let failWith: string | null = null;
 
 vi.mock("msedge-tts", () => {
   const { Readable } = require("node:stream");
@@ -14,6 +15,7 @@ vi.mock("msedge-tts", () => {
         lastVoice = voice;
       }
       toStream(_text: string, opts: { rate: string }) {
+        if (failWith) throw new Error(failWith);
         calls.push({ voice: lastVoice, rate: opts.rate });
         return { audioStream: Readable.from([Buffer.from("synthetic-audio")]) };
       }
@@ -22,16 +24,19 @@ vi.mock("msedge-tts", () => {
 });
 
 import { POST } from "./route";
+import { resetRateLimits } from "@/lib/rate-limit";
 
-function req(payload: unknown) {
+function req(payload: unknown, headers: Record<string, string> = {}) {
   return new NextRequest("http://localhost/api/tts", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
     body: JSON.stringify(payload),
   });
 }
 
 beforeEach(() => {
+  resetRateLimits();
+  failWith = null;
   calls.length = 0;
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -60,5 +65,39 @@ describe("POST /api/tts input boundary", () => {
     await POST(req({ text: "你好", voice: "zh-CN-YunjianNeural" }));
     expect(calls.map((c) => c.voice)).toEqual(["zh-CN-YunyangNeural", "zh-CN-YunjianNeural"]);
     expect(calls[0].rate).toBe("+20%");
+  });
+});
+
+describe("POST /api/tts rate limit", () => {
+  const from = (ip: string) => ({ "x-forwarded-for": ip });
+
+  it("answers 429 with Retry-After once a client passes 30 requests a minute, without synthesising", async () => {
+    for (let i = 0; i < 30; i++) {
+      expect((await POST(req({ text: "你好" }, from("203.0.113.30")))).status).toBe(200);
+    }
+    const res = await POST(req({ text: "你好" }, from("203.0.113.30")));
+    expect(res.status).toBe(429);
+    const retryAfter = Number(res.headers.get("Retry-After"));
+    expect(retryAfter).toBeGreaterThanOrEqual(1);
+    expect(retryAfter).toBeLessThanOrEqual(60);
+    expect((await res.json()).error).toMatch(/too many requests/i);
+    expect(calls).toHaveLength(30); // the 31st request never reached the paid-for synthesiser
+  });
+
+  it("keeps other clients unaffected", async () => {
+    for (let i = 0; i < 30; i++) await POST(req({ text: "你好" }, from("203.0.113.30")));
+    expect((await POST(req({ text: "你好" }, from("203.0.113.30")))).status).toBe(429);
+    expect((await POST(req({ text: "你好" }, from("203.0.113.31")))).status).toBe(200);
+  });
+});
+
+describe("POST /api/tts error responses", () => {
+  it("does not echo internal error details back to the client", async () => {
+    failWith = "wss://speech.example.internal handshake failed: token=abc123";
+    const res = await POST(req({ text: "你好" }));
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body).toEqual({ error: "TTS synthesis failed" });
+    expect(JSON.stringify(body)).not.toContain("abc123");
   });
 });

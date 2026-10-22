@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
+import { rateLimitResponse } from "@/lib/rate-limit";
 
 // Microsoft Edge Neural Voices for zh-CN (curated short list).
 // Quality is far better than the iOS built-in Tingting compact voice.
@@ -21,6 +22,9 @@ const VOICE_ID_PATTERN = /^[a-z]{2,3}-[A-Z]{2}(-[A-Za-z]+)?-[A-Za-z]+Neural$/;
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  const limited = rateLimitResponse(request, "tts");
+  if (limited) return limited;
+
   let body: { text?: unknown; voice?: unknown; rate?: unknown };
   try {
     body = await request.json();
@@ -92,7 +96,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("TTS error:", error);
-    const msg = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: "TTS synthesis failed", detail: msg }, { status: 500 });
+    return NextResponse.json({ error: "TTS synthesis failed" }, { status: 500 });
   }
 }

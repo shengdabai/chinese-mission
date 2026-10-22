@@ -4,6 +4,7 @@ import { buildPolicyPrompt, buildNpcPrompt } from "@/lib/engine/prompts";
 import { processUserInput, detectScript } from "@/lib/engine/dialogue";
 import { getMission } from "@/lib/data/scenarios";
 import { validateChatBody } from "@/lib/engine/validate-request";
+import { rateLimitResponse } from "@/lib/rate-limit";
 import type { Mission, Session } from "@/lib/types";
 
 interface ChatRequest {
@@ -36,6 +37,9 @@ interface NpcOutput {
 }
 
 export async function POST(request: NextRequest) {
+  const limited = rateLimitResponse(request, "chat");
+  if (limited) return limited;
+
   let raw: unknown;
   try {
     raw = await request.json();

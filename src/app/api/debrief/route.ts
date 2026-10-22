@@ -4,6 +4,7 @@ import { buildDebriefPrompt } from "@/lib/engine/prompts";
 import { generateDebrief } from "@/lib/engine/dialogue";
 import { getMission } from "@/lib/data/scenarios";
 import { validateDebriefBody } from "@/lib/engine/validate-request";
+import { rateLimitResponse } from "@/lib/rate-limit";
 import type { Session, DebriefResult, GlossItem } from "@/lib/types";
 
 interface DebriefRequest {
@@ -43,6 +44,9 @@ interface AIDebriefOutput {
 }
 
 export async function POST(request: NextRequest) {
+  const limited = rateLimitResponse(request, "debrief");
+  if (limited) return limited;
+
   // Parse body once, available in both try and catch
   let raw: unknown;
   try {
