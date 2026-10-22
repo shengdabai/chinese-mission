@@ -1,30 +1,64 @@
 import type { Metadata } from "next";
-import { DM_Sans, Noto_Sans_SC } from "next/font/google";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
-  display: "swap",
-  preload: false,
-});
-
-const notoSansSC = Noto_Sans_SC({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-noto-sc",
-  display: "swap",
-  preload: false,
-});
-
 export const metadata: Metadata = {
-  title: "Chinese Mission - 中文任务世界",
-  description: "AI-powered immersive Chinese learning through real-world missions",
+  title: {
+    default: "Chinese Mission — AI-Powered Task-Based Chinese Learning",
+    template: "%s | Chinese Mission",
+  },
+  description: "AI-powered immersive Chinese learning through real-world missions. Practice ordering coffee, booking hotels, and making friends with an AI conversation partner. Free daily practice, premium unlimited access.",
+  keywords: ["learn Chinese online", "Chinese conversation practice", "AI Chinese tutor", "task-based Chinese learning", "HSK practice", "Mandarin speaking", "中文学习"],
+  authors: [{ name: "Tony Sheng" }],
+  openGraph: {
+    title: "Chinese Mission — AI-Powered Task-Based Chinese Learning",
+    description: "Practice real-world Chinese with AI. Complete missions in cafe, restaurant, hotel, travel, social, and work scenarios.",
+    type: "website",
+    locale: "en_US",
+  },
+  robots: "index, follow",
+  alternates: {
+    canonical: "https://chinese-mission.vercel.app",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: "Chinese Mission",
+    description: "AI-powered immersive Chinese learning through real-world missions. Practice ordering coffee, booking hotels, and making friends with an AI conversation partner.",
+    provider: {
+      "@type": "Organization",
+      name: "Chinese Mission",
+      url: "https://chinese-mission.vercel.app",
+    },
+    educationalLevel: "Beginner to Intermediate",
+    inLanguage: "zh",
+    courseMode: "AI conversation",
+    hasCourseInstance: [
+      { "@type": "CourseInstance", name: "Cafe Mission", courseMode: "online" },
+      { "@type": "CourseInstance", name: "Restaurant Mission", courseMode: "online" },
+      { "@type": "CourseInstance", name: "Hotel Mission", courseMode: "online" },
+      { "@type": "CourseInstance", name: "Travel Mission", courseMode: "online" },
+      { "@type": "CourseInstance", name: "Social Mission", courseMode: "online" },
+      { "@type": "CourseInstance", name: "Work Mission", courseMode: "online" },
+    ],
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "CNY",
+      availability: "https://schema.org/InStock",
+    },
+  };
+
   return (
-    <html lang="zh-cmn-Hans" className={`${dmSans.variable} ${notoSansSC.variable}`}>
+    <html lang="zh-cmn-Hans">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="bg-slate-50 text-slate-900 antialiased font-sans">
         <a
           href="#main-content"
