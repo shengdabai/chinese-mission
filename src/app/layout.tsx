@@ -3,7 +3,7 @@ import "./globals.css";
 import { siteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
-  // Resolves the Open Graph / Twitter image URLs to absolute ones; the same address as the canonical URL below.
+  // Resolves the Open Graph / Twitter image URLs and the canonical URL below to absolute ones.
   metadataBase: new URL(siteUrl()),
   title: {
     default: "Chinese Mission — AI-Powered Task-Based Chinese Learning",
@@ -25,7 +25,8 @@ export const metadata: Metadata = {
   },
   robots: "index, follow",
   alternates: {
-    canonical: siteUrl(),
+    // "./" resolves against each page's own path; a fixed URL here would make every subpage canonicalize to the homepage.
+    canonical: "./",
   },
 };
 

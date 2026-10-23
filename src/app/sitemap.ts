@@ -8,6 +8,5 @@ export default function sitemap() {
     { url: `${BASE_URL}/missions`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE_URL}/pricing`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE_URL}/phrasebook`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 },
-    { url: `${BASE_URL}/profile`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 },
   ];
 }
