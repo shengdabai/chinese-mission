@@ -24,7 +24,8 @@
 终端跑：
 
 ```bash
-open "/Users/tonysheng/Desktop/项目开发/08-中文教学项目/中文使命-官网/ios/App/App.xcodeproj"
+cd "<项目根>"   # 本仓库的根目录
+open ios/App/App.xcodeproj
 ```
 
 Xcode 启动后等它解析 SPM 依赖（左下角进度条，约 30 秒首次会比较慢）。
@@ -138,7 +139,7 @@ App 第一次启动时（或第一次用语音输入时）会弹两个权限请�
 ### Build 失败 "Module 'Capacitor' not found"
 
 ```bash
-cd "/Users/tonysheng/Desktop/项目开发/08-中文教学项目/中文使命-官网"
+cd "<项目根>"
 ./node_modules/.bin/cap sync ios
 ```
 
@@ -175,7 +176,7 @@ App 不能启动了，或弹 "App Cannot Be Verified"。修复：用同一个 Ap
 ## 文件位置参考
 
 ```
-项目根 = /Users/tonysheng/Desktop/项目开发/08-中文教学项目/中文使命-官网/
+项目根 = 本仓库根目录（下文 <项目根>）
 ├── capacitor.config.ts           # server.url + allowNavigation
 ├── ios/App/App.xcodeproj          # ★ Xcode 打开这个
 ├── ios/App/App/Info.plist         # 权限文案在这
