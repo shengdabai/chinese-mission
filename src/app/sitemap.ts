@@ -1,5 +1,7 @@
+import { siteUrl } from "@/lib/site";
+
 export default function sitemap() {
-  const BASE_URL = "https://chinese-mission.vercel.app";
+  const BASE_URL = siteUrl();
   return [
     { url: BASE_URL, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
     { url: `${BASE_URL}/onboarding`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },

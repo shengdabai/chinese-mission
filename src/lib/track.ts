@@ -11,7 +11,7 @@ export function track(event: TrackEvent, props?: Record<string, string | number 
     const sending = fetch("/api/event", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event, props: sanitizeProps(props) }),
+      body: JSON.stringify({ event, props: sanitizeProps(event, props) }),
       keepalive: true,
     });
     sending.catch(() => {});

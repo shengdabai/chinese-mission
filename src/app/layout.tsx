@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { configuredSiteUrl } from "@/lib/site";
+import { siteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
-  // Resolves the Open Graph / Twitter image URLs to absolute ones. Same host as the canonical URL below unless NEXT_PUBLIC_SITE_URL overrides it.
-  metadataBase: new URL(configuredSiteUrl() ?? "https://chinese-mission.vercel.app"),
+  // Resolves the Open Graph / Twitter image URLs to absolute ones; the same address as the canonical URL below.
+  metadataBase: new URL(siteUrl()),
   title: {
     default: "Chinese Mission — AI-Powered Task-Based Chinese Learning",
     template: "%s | Chinese Mission",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   },
   robots: "index, follow",
   alternates: {
-    canonical: "https://chinese-mission.vercel.app",
+    canonical: siteUrl(),
   },
 };
 
@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     provider: {
       "@type": "Organization",
       name: "Chinese Mission",
-      url: "https://chinese-mission.vercel.app",
+      url: siteUrl(),
     },
     educationalLevel: "Beginner to Intermediate",
     inLanguage: "zh",

@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST } from "./route";
 import { resetRateLimits, RATE_LIMITS } from "@/lib/rate-limit";
+import { EVENT_PROPS } from "@/lib/events";
 
 const EVENTS = ["cta_click", "trial_start", "paywall_view", "upgrade_click", "result_view", "share_click"];
 
@@ -37,7 +38,7 @@ describe("POST /api/event accepts the funnel events", () => {
 
   it("writes exactly one structured log line: zt_event, props, ts", async () => {
     const before = Date.now();
-    const res = await POST(req({ event: "trial_start", props: { mission: "cafe-01", plan: "yearly" } }));
+    const res = await POST(req({ event: "trial_start", props: { mission_id: "m1" } }));
     expect(res.status).toBe(204);
 
     expect(logSpy).toHaveBeenCalledTimes(1);
@@ -47,7 +48,7 @@ describe("POST /api/event accepts the funnel events", () => {
     const parsed = JSON.parse(line);
     expect(Object.keys(parsed).sort()).toEqual(["props", "ts", "zt_event"]);
     expect(parsed.zt_event).toBe("trial_start");
-    expect(parsed.props).toEqual({ mission: "cafe-01", plan: "yearly" });
+    expect(parsed.props).toEqual({ mission_id: "m1" });
     const ts = Date.parse(parsed.ts);
     expect(ts).toBeGreaterThanOrEqual(before);
     expect(ts).toBeLessThanOrEqual(Date.now());
@@ -70,9 +71,14 @@ describe("POST /api/event accepts the funnel events", () => {
     expect(everything).not.toContain("SecretAgent");
   });
 
-  it("accepts 5 props and values of exactly 40 characters", async () => {
-    const props = { a: "x".repeat(40), b: "1", c: "2", d: "3", e: "4" };
-    expect((await POST(req({ event: "share_click", props }))).status).toBe(204);
+  it("accepts every documented property of every event, with a value from its vocabulary", async () => {
+    for (const [event, rules] of Object.entries(EVENT_PROPS)) {
+      const props = Object.fromEntries(Object.entries(rules).map(([key, rule]) => [key, rule instanceof RegExp ? "m12" : rule[0]]));
+      const res = await POST(req({ event, props }));
+      expect(res.status, `${event} ${JSON.stringify(props)}`).toBe(204);
+    }
+    expect((await POST(req({ event: "upgrade_click", props: { plan: "premium", source: "pricing" } }))).status).toBe(204);
+    expect((await POST(req({ event: "result_view", props: { result: "partial_success", mission_id: "m999" } }))).status).toBe(204);
   });
 });
 
@@ -139,7 +145,24 @@ describe("POST /api/event rejects bad input and logs nothing", () => {
   });
 
   it("keeps mission_id, which is a content id and not a user id", async () => {
-    expect((await POST(req({ event: "trial_start", props: { mission_id: "cafe-01" } }))).status).toBe(204);
+    expect((await POST(req({ event: "trial_start", props: { mission_id: "m1" } }))).status).toBe(204);
+  });
+
+  it("does not take values outside the event's vocabulary: an address, a name, free text, another event's property", async () => {
+    for (const body of [
+      { event: "cta_click", props: { where: "203.0.113.99" } },
+      { event: "cta_click", props: { where: "Alice" } },
+      { event: "result_view", props: { result: "Alice", mission_id: "m1" } },
+      { event: "result_view", props: { result: "success", mission_id: "m1 for alice@example.com" } },
+      { event: "upgrade_click", props: { plan: "premium", source: "https://example.com/?u=alice" } },
+      { event: "trial_start", props: { mission_id: "cafe-01" } },
+      { event: "paywall_view", props: { where: "hero" } },
+      { event: "share_click", props: { mission_id: "m1" } },
+    ]) {
+      const res = await POST(req(body));
+      expect(res.status, JSON.stringify(body)).toBe(400);
+    }
+    expect(logSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -152,7 +175,7 @@ describe("POST /api/event body size cap", () => {
   });
 
   it("accepts a body of exactly 1024 bytes and refuses 1025", async () => {
-    const base = JSON.stringify({ event: "cta_click", props: { a: "" } });
+    const base = JSON.stringify({ event: "cta_click", props: { where: "hero" } });
     const pad = (n: number) => base + " ".repeat(n - Buffer.byteLength(base));
     expect((await POST(req(pad(1024)))).status).toBe(204);
     expect((await POST(req(pad(1025)))).status).toBe(413);

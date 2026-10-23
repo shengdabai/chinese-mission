@@ -28,7 +28,11 @@ export interface RateLimitResult {
   retryAfterSec: number;
 }
 
-/** Upper bound on tracked clients, so spoofed headers cannot grow memory without limit. */
+/**
+ * Upper bound on tracked clients per scope (the part of the key before ":", e.g. "event"), so spoofed headers
+ * cannot grow memory without limit, and a flood of clients on one route — /api/event takes any caller — cannot
+ * use up the counters of another route. Memory is bounded by scopes x MAX_BUCKETS.
+ */
 export const MAX_BUCKETS = 10_000;
 const SWEEP_INTERVAL_MS = 60_000;
 const MAX_KEY_LENGTH = 64; // longest textual IPv6 address is 45 chars
@@ -39,12 +43,26 @@ interface Bucket {
 }
 
 const buckets = new Map<string, Bucket>();
+const liveByScope = new Map<string, number>(); // live buckets per scope, kept in step with `buckets`
 let lastSweep = 0;
+
+function scopeOf(key: string): string {
+  const colon = key.indexOf(":");
+  return colon === -1 ? "" : key.slice(0, colon);
+}
+
+function forget(key: string): void {
+  buckets.delete(key);
+  const scope = scopeOf(key);
+  const left = (liveByScope.get(scope) ?? 1) - 1;
+  if (left <= 0) liveByScope.delete(scope);
+  else liveByScope.set(scope, left);
+}
 
 function purgeExpired(now: number): void {
   for (const [key, bucket] of buckets) {
     const newest = bucket.hits[bucket.hits.length - 1];
-    if (newest === undefined || newest <= now - bucket.windowMs) buckets.delete(key);
+    if (newest === undefined || newest <= now - bucket.windowMs) forget(key);
   }
 }
 
@@ -64,11 +82,13 @@ export function checkRateLimit(
 
   let bucket = buckets.get(key);
   if (!bucket) {
-    if (buckets.size >= MAX_BUCKETS) purgeExpired(now);
+    const scope = scopeOf(key);
+    if ((liveByScope.get(scope) ?? 0) >= MAX_BUCKETS) purgeExpired(now);
     // Still full of live counters: refuse the new client. Evicting a live counter would reset that client's quota.
-    if (buckets.size >= MAX_BUCKETS) return { allowed: false, remaining: 0, retryAfterSec: Math.ceil(windowMs / 1000) };
+    if ((liveByScope.get(scope) ?? 0) >= MAX_BUCKETS) return { allowed: false, remaining: 0, retryAfterSec: Math.ceil(windowMs / 1000) };
     bucket = { hits: [], windowMs };
     buckets.set(key, bucket);
+    liveByScope.set(scope, (liveByScope.get(scope) ?? 0) + 1);
   }
   bucket.windowMs = windowMs;
   const cutoff = now - windowMs;
@@ -111,6 +131,7 @@ export function rateLimitResponse(request: Request, scope: RateLimitScope): Next
 /** Test helpers. */
 export function resetRateLimits(): void {
   buckets.clear();
+  liveByScope.clear();
   lastSweep = 0;
 }
 

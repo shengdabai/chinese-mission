@@ -122,3 +122,13 @@ describe("rateLimitResponse", () => {
     expect(rateLimitResponse(ip, "chat")).toBeNull();
   });
 });
+
+describe("per-scope bucket cap", () => {
+  it("a flood of clients on one route does not use up another route's counters", () => {
+    for (let i = 0; i < MAX_BUCKETS + 25; i++) checkRateLimit(`event:spoof-${i}`, 60, 60_000, 1);
+    expect(checkRateLimit("event:one-more", 60, 60_000, 1).allowed).toBe(false);
+    expect(checkRateLimit("chat:fresh", 30, 60_000, 1).allowed).toBe(true);
+    expect(checkRateLimit("debrief:fresh", 10, 60_000, 1).allowed).toBe(true);
+    expect(rateLimitBucketCount()).toBe(MAX_BUCKETS + 2);
+  });
+});

@@ -5,6 +5,14 @@
  * as written for that to work.
  */
 
+/** The site's address when NEXT_PUBLIC_SITE_URL is not set: the canonical host. */
+export const DEFAULT_SITE_URL = "https://chinese-mission.vercel.app";
+
+/** The one site address for canonical links, metadataBase, robots, the sitemap and share links. */
+export function siteUrl(): string {
+  return configuredSiteUrl() ?? DEFAULT_SITE_URL;
+}
+
 /** Origin of NEXT_PUBLIC_SITE_URL when it is a valid http(s) URL, otherwise null. */
 export function configuredSiteUrl(): string | null {
   const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();

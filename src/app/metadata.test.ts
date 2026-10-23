@@ -18,6 +18,12 @@ describe("link-preview metadata", () => {
     expect((base as URL).protocol).toMatch(/^https?:$/);
   });
 
+  it("uses one site address for the canonical link, the JSON-LD url and metadataBase", () => {
+    const base = (metadata.metadataBase as URL).origin;
+    expect(metadata.alternates?.canonical).toBe(base);
+    expect(base).toMatch(/^https?:\/\//);
+  });
+
   it("describes the OG card as a 1200x630 PNG", () => {
     expect(size).toEqual({ width: 1200, height: 630 });
     expect(contentType).toBe("image/png");
