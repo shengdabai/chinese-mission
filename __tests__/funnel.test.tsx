@@ -115,13 +115,13 @@ describe("pricing page", () => {
 
 describe("Paywall", () => {
   it("counts paywall_view once when it appears", async () => {
-    await render(<Paywall onClose={() => {}} resetsAt="" />);
+    await render(<Paywall onClose={() => {}} resetsAt="" used={3} limit={3} />);
     expect(events()).toEqual([{ event: "paywall_view", props: {} }]);
   });
 
   it("counts upgrade_click for each plan button and leaves close buttons uncounted", async () => {
     const onClose = vi.fn();
-    await render(<Paywall onClose={onClose} resetsAt="" />);
+    await render(<Paywall onClose={onClose} resetsAt="" used={3} limit={3} />);
     await click(container.querySelector<HTMLElement>('[data-pricing-id="cm_yearly"]')!);
     await click(container.querySelector<HTMLElement>('[data-pricing-id="cm_monthly"]')!);
     expect(events().slice(1)).toEqual([
@@ -132,6 +132,17 @@ describe("Paywall", () => {
     await click(byText("稍后再说", "button"));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(events()).toHaveLength(3);
+  });
+
+  it("states the real number of attempts used and the local reset time", async () => {
+    const resetsAt = "2026-10-28T16:00:00.000Z";
+    await render(<Paywall onClose={() => {}} resetsAt={resetsAt} used={2} limit={3} />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("今天已用 2/3 次免费任务");
+    const local = new Date(resetsAt).toLocaleString("zh-CN", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+    expect(text).toContain(`${local} 重置`);
+    // Attempts are debited when a mission starts, so the paywall must not claim they were completed.
+    expect(text).not.toContain("已完成");
   });
 });
 

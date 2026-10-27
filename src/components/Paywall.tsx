@@ -7,6 +7,9 @@ import { track } from "@/lib/track";
 interface PaywallProps {
   onClose: () => void;
   resetsAt: string;
+  /** Free attempts debited today (an attempt is debited when a mission starts, not when it is completed). */
+  used: number;
+  limit: number;
 }
 
 // Planned prices only: there is no purchase flow yet. The plan buttons say "即将开放" and only count interest.
@@ -15,8 +18,11 @@ const PRICING = {
   yearly: { price: "¥168", per: "/year", id: "cm_yearly", note: "省 50%" },
 };
 
-export function Paywall({ onClose, resetsAt }: PaywallProps) {
-  const resetDate = resetsAt ? new Date(resetsAt).toLocaleDateString("zh-CN", { month: "long", day: "numeric" }) : "";
+export function Paywall({ onClose, resetsAt, used, limit }: PaywallProps) {
+  // resetsAt is the next local midnight (or the next UTC midnight for a quota record written before that change).
+  const resetTime = resetsAt
+    ? new Date(resetsAt).toLocaleString("zh-CN", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
+    : "";
 
   // The paywall is mounted only while it is shown, so mounting is the view.
   useEffect(() => {
@@ -45,7 +51,7 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
           今日免费次数已用完
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600">
-          已完成 3 次任务挑战，{resetDate} 重置免费额度
+          今天已用 {used}/{limit} 次免费任务{resetTime ? `，${resetTime} 重置` : ""}
           <br />
           Premium（不限次数）尚未开售
         </p>

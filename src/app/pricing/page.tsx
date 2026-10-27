@@ -122,7 +122,7 @@ export default function PricingPage() {
             <div>
               <h3 className="font-semibold text-slate-900">免费计划有什么限制？</h3>
               <p className="mt-1 text-sm text-slate-600">
-                每天 3 次免费任务挑战。额度每天 UTC 00:00 重置。无需信用卡。
+                每天 3 次免费任务挑战。额度在你所在时区的每天 0 点重置。无需信用卡。
               </p>
             </div>
             <div>

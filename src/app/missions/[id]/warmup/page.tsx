@@ -177,7 +177,10 @@ export default function WarmupPage() {
           </div>
         </div>
       </div>
-      {paywallOpen && <Paywall onClose={() => setPaywallOpen(false)} resetsAt={getQuotaSummary().resetsAt} />}
+      {paywallOpen && (() => {
+        const q = getQuotaSummary();
+        return <Paywall onClose={() => setPaywallOpen(false)} resetsAt={q.resetsAt} used={q.used} limit={q.limit} />;
+      })()}
     </div>
   );
 }

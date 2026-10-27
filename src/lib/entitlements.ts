@@ -1,7 +1,7 @@
 /**
  * Free-tier entitlements & quota tracking.
  *
- * Free users: 3 mission attempts per day (UTC-based reset).
+ * Free users: 3 mission attempts per day. The day is the user's local calendar day: the quota resets at local midnight.
  * Premium users: unlimited.
  *
  * RevenueCat SDK integration is intentionally stubbed - currently a `false` constant
@@ -14,31 +14,54 @@ const PREMIUM_KEY = "chinese-mission-premium-debug"; // dev override only
 const FREE_DAILY_LIMIT = 3;
 
 export interface DailyQuota {
-  date: string; // YYYY-MM-DD UTC
+  /** YYYY-MM-DD. A local calendar day when basis is "local"; a UTC day for legacy records. */
+  date: string;
   attemptsUsed: number;
+  /**
+   * "local" for records written since the switch to local-midnight resets. Records written before it have no
+   * basis and a UTC date ("legacy"). A legacy record keeps its old meaning until its UTC day ends, because its
+   * attempts may belong to either of the two local days that the UTC day overlaps: re-dating it to the local day
+   * could take away attempts, and dropping it early could give a second reset inside one local day.
+   */
+  basis?: "local";
 }
 
-function todayUtc(): string {
-  return new Date().toISOString().slice(0, 10);
+function todayUtc(now = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
+
+function todayLocal(now = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+function freshQuota(now = new Date()): DailyQuota {
+  return { date: todayLocal(now), attemptsUsed: 0, basis: "local" };
+}
+
+function isCurrent(q: Partial<DailyQuota>, now: Date): boolean {
+  return q.basis === "local" ? q.date === todayLocal(now) : q.date === todayUtc(now);
 }
 
 function readQuota(): DailyQuota {
-  if (typeof window === "undefined") return { date: todayUtc(), attemptsUsed: 0 };
+  const now = new Date();
+  if (typeof window === "undefined") return freshQuota(now);
   try {
     const raw = localStorage.getItem(QUOTA_KEY);
-    if (!raw) return { date: todayUtc(), attemptsUsed: 0 };
+    if (!raw) return freshQuota(now);
     const parsed = JSON.parse(raw) as Partial<DailyQuota> | null;
-    if (!parsed || parsed.date !== todayUtc()) {
+    if (!parsed || typeof parsed.date !== "string" || !isCurrent(parsed, now)) {
       // New day (or unreadable record), reset
-      return { date: todayUtc(), attemptsUsed: 0 };
+      return freshQuota(now);
     }
     // A corrupted/tampered counter (negative, NaN, string...) must never widen the quota.
     const used = parsed.attemptsUsed;
     const attemptsUsed =
       typeof used === "number" && Number.isInteger(used) && used >= 0 ? used : 0;
-    return { date: parsed.date, attemptsUsed };
+    // Keep the record's own basis: a current legacy record stays on its UTC day until that day ends.
+    return parsed.basis === "local" ? { date: parsed.date, attemptsUsed, basis: "local" } : { date: parsed.date, attemptsUsed };
   } catch {
-    return { date: todayUtc(), attemptsUsed: 0 };
+    return freshQuota(now);
   }
 }
 
@@ -89,7 +112,7 @@ export function consumeAttempt(): { ok: boolean; remaining: number } {
   if (q.attemptsUsed >= FREE_DAILY_LIMIT) {
     return { ok: false, remaining: 0 };
   }
-  const updated = { date: q.date, attemptsUsed: q.attemptsUsed + 1 };
+  const updated: DailyQuota = { ...q, attemptsUsed: q.attemptsUsed + 1 };
   if (!writeQuota(updated)) {
     return { ok: false, remaining: Math.max(0, FREE_DAILY_LIMIT - q.attemptsUsed) };
   }
@@ -109,8 +132,13 @@ export function getQuotaSummary(): {
   }
   const q = readQuota();
   const tomorrow = new Date();
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  tomorrow.setUTCHours(0, 0, 0, 0);
+  if (q.basis === "local") {
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0); // next local midnight
+  } else {
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    tomorrow.setUTCHours(0, 0, 0, 0); // a current legacy record ends at the next UTC midnight
+  }
   return {
     premium: false,
     used: q.attemptsUsed,
