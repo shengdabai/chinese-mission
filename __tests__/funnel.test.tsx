@@ -97,7 +97,7 @@ describe("landing page", () => {
 describe("pricing page", () => {
   it("counts upgrade_click on the Premium button and keeps it otherwise inert", async () => {
     await render(<PricingPage />);
-    const button = byText("Upgrade to Premium →", "button");
+    const button = byText("即将开放", "button");
     await click(button);
     expect(events()).toEqual([{ event: "upgrade_click", props: { plan: "premium", source: "pricing" } }]);
     expect(button.getAttribute("type")).toBe("button");

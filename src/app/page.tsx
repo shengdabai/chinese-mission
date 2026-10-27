@@ -3,13 +3,14 @@ import { TrackedLink } from "@/components/Tracked";
 
 export const revalidate = 3600; // revalidate every hour
 
+// The six mission groups that exist (src/lib/data/scenario-meta.ts, 20 missions).
 const SCENARIOS = [
-  { emoji: "☕", name: "咖啡厅", nameEn: "Cafe", desc: "点单、改单、特殊需求" },
-  { emoji: "🍜", name: "餐厅", nameEn: "Restaurant", desc: "预订、点菜、结账" },
-  { emoji: "🏨", name: "酒店", nameEn: "Hotel", desc: "入住、换房、退房" },
-  { emoji: "✈️", name: "旅行", nameEn: "Travel", desc: "问路、买票、导航" },
-  { emoji: "👋", name: "社交", nameEn: "Social", desc: "自我介绍、交朋友、聊天" },
-  { emoji: "💼", name: "工作", nameEn: "Work", desc: "面试、开会、邮件沟通" },
+  { emoji: "☕", name: "咖啡厅与餐厅", nameEn: "Cafe & Restaurant", desc: "点饮料、买单、点外卖" },
+  { emoji: "🚕", name: "打车与交通", nameEn: "Taxi & Transport", desc: "说目的地、请司机开慢点、停车" },
+  { emoji: "🧭", name: "问路", nameEn: "Ask Directions", desc: "找地铁站、问距离和方向" },
+  { emoji: "👋", name: "自我介绍", nameEn: "Self Introduction", desc: "介绍自己、来自哪里、做什么工作" },
+  { emoji: "🤝", name: "交朋友", nameEn: "Making Friends", desc: "加微信、约吃饭、聊爱好" },
+  { emoji: "💼", name: "职场基础", nameEn: "Work Basics", desc: "打招呼、请同事帮忙、约会议、请假" },
 ];
 
 export default function LandingPage() {
@@ -45,7 +46,7 @@ export default function LandingPage() {
           </span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600 sm:text-xl">
-          AI-powered immersive conversation practice. Order coffee, book a hotel, make friends —
+          AI-powered immersive conversation practice. Order coffee, take a taxi, make friends —
           complete practical missions in simulated real-world scenarios with instant feedback.
         </p>
         <p className="mt-3 text-base text-slate-500">

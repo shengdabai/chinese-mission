@@ -32,7 +32,7 @@ export default function PricingPage() {
             Choose Your Plan
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-lg text-slate-600">
-            Start free. Upgrade when you are ready for unlimited practice.
+            Start free. Premium is coming soon.
           </p>
         </div>
 
@@ -51,7 +51,7 @@ export default function PricingPage() {
             <ul className="mt-6 space-y-3 text-sm text-slate-700">
               <li className="flex items-start gap-2">
                 <span className="text-emerald-500">✓</span>
-                <span>6 个真实场景（咖啡厅、餐厅、酒店、旅行、社交、工作）</span>
+                <span>全部 20 个任务，分 6 组（咖啡厅与餐厅、打车与交通、问路、自我介绍、交朋友、职场基础）</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-emerald-500">✓</span>
@@ -89,40 +89,26 @@ export default function PricingPage() {
               <span className="text-slate-500">/month</span>
             </div>
             <p className="mt-2 text-sm text-slate-600">
-              年度订阅 ¥168/年，相当于每月 ¥14，省 50%
+              尚未开售。计划价：月付 ¥28，年付 ¥168（相当于每月 ¥14）
             </p>
             <ul className="mt-6 space-y-3 text-sm text-slate-700">
               <li className="flex items-start gap-2">
                 <span className="text-emerald-500">✓</span>
-                <span><strong>无限次</strong>任务挑战</span>
+                <span>不受每天 3 次的限制</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-emerald-500">✓</span>
-                <span>全部 26+ 场景（含商务/HSK 专项）</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-500">✓</span>
-                <span>语音输入 + 发音评测</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-500">✓</span>
-                <span>个性化复盘报告 + 学习进度追踪</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-500">✓</span>
-                <span>优先支持新场景开发</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-500">✓</span>
-                <span>iOS App 完整体验</span>
+                <span>与免费版相同的 20 个任务</span>
               </li>
             </ul>
+            {/* No purchase flow exists yet (RevenueCat is not wired; isPremium() is false in production).
+                The button only counts interest (upgrade_click) and says so, instead of offering a purchase. */}
             <TrackedButton
               event="upgrade_click"
               eventProps={{ plan: "premium", source: "pricing" }}
-              className="mt-8 block w-full rounded-xl bg-indigo-600 py-3 text-center text-sm font-semibold text-white transition hover:bg-indigo-700"
+              className="mt-8 block w-full rounded-xl border-2 border-indigo-200 bg-indigo-50 py-3 text-center text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
             >
-              Upgrade to Premium →
+              即将开放
             </TrackedButton>
           </div>
         </div>
@@ -146,9 +132,9 @@ export default function PricingPage() {
               </p>
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900">支持哪些支付方式？</h3>
+              <h3 className="font-semibold text-slate-900">现在可以购买 Premium 吗？</h3>
               <p className="mt-1 text-sm text-slate-600">
-                Apple Pay / Alipay / 信用卡（通过 RevenueCat 处理）。
+                还不能。Premium 尚未开售，目前不收任何费用；开售时会在这里说明支付方式。
               </p>
             </div>
             <div>

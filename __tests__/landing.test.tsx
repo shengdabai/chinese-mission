@@ -8,14 +8,12 @@ describe("Landing page", () => {
     expect(html).toContain("Chinese Mission");
   });
 
-  it("includes all 6 scenarios", () => {
+  it("lists the 6 mission groups that exist, and no hotel or travel group", () => {
     const html = renderToString(LandingPage());
-    expect(html).toContain("咖啡厅");
-    expect(html).toContain("餐厅");
-    expect(html).toContain("酒店");
-    expect(html).toContain("旅行");
-    expect(html).toContain("社交");
-    expect(html).toContain("工作");
+    for (const group of ["咖啡厅与餐厅", "打车与交通", "问路", "自我介绍", "交朋友", "职场基础"]) {
+      expect(html).toContain(group);
+    }
+    expect(html).not.toContain("酒店");
   });
 
   it("includes CTA links to onboarding and pricing", () => {

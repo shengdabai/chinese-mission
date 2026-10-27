@@ -9,6 +9,7 @@ interface PaywallProps {
   resetsAt: string;
 }
 
+// Planned prices only: there is no purchase flow yet. The plan buttons say "即将开放" and only count interest.
 const PRICING = {
   monthly: { price: "¥28", per: "/month", id: "cm_monthly" },
   yearly: { price: "¥168", per: "/year", id: "cm_yearly", note: "省 50%" },
@@ -46,7 +47,7 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
         <p className="mt-2 text-center text-sm text-slate-600">
           已完成 3 次任务挑战，{resetDate} 重置免费额度
           <br />
-          升级解锁无限对话练习
+          Premium（不限次数）尚未开售
         </p>
 
         <div className="mt-6 space-y-3">
@@ -54,7 +55,7 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
             type="button"
             data-pricing-id={PRICING.yearly.id}
             onClick={() => track("upgrade_click", { plan: PRICING.yearly.id, source: "paywall" })}
-            className="relative w-full rounded-2xl border-2 border-indigo-500 bg-indigo-50 p-4 text-left transition hover:bg-indigo-100"
+            className="relative w-full rounded-2xl border-2 border-indigo-200 bg-indigo-50/60 p-4 text-left transition hover:bg-indigo-100"
           >
             <div className="absolute -top-2 left-4 rounded-full bg-indigo-500 px-2 py-0.5 text-xs font-semibold text-white">
               {PRICING.yearly.note}
@@ -66,7 +67,7 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
                 <span className="text-sm font-normal text-slate-500">{PRICING.yearly.per}</span>
               </span>
             </div>
-            <p className="mt-1 text-xs text-slate-600">≈ ¥14/月，相当于 5 折</p>
+            <p className="mt-1 text-xs text-slate-600">≈ ¥14/月 · 即将开放</p>
           </button>
 
           <button
@@ -82,35 +83,25 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
                 <span className="text-sm font-normal text-slate-500">{PRICING.monthly.per}</span>
               </span>
             </div>
-            <p className="mt-1 text-xs text-slate-600">随时取消</p>
+            <p className="mt-1 text-xs text-slate-600">即将开放</p>
           </button>
         </div>
 
         <ul className="mt-6 space-y-2 text-sm text-slate-700">
           <li className="flex items-start gap-2">
             <span className="text-emerald-500">✓</span>
-            <span>无限次任务挑战</span>
+            <span>Premium 开售后：不受每天 3 次的限制</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-emerald-500">✓</span>
-            <span>解锁全部 26 个场景</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-emerald-500">✓</span>
-            <span>语音输入 + 发音评测</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-emerald-500">✓</span>
-            <span>个性化复盘报告</span>
+            <span>免费版已可使用全部 20 个任务</span>
           </li>
         </ul>
 
         <p className="mt-6 text-center text-xs text-slate-400">
           <Link href="/profile" className="underline" onClick={onClose}>
-            恢复购买
+            查看学习进度
           </Link>
-          {" · "}
-          订阅协议 · 隐私政策
         </p>
 
         <button

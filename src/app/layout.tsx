@@ -9,19 +9,19 @@ export const metadata: Metadata = {
     default: "Chinese Mission — AI-Powered Task-Based Chinese Learning",
     template: "%s | Chinese Mission",
   },
-  description: "AI-powered immersive Chinese learning through real-world missions. Practice ordering coffee, booking hotels, and making friends with an AI conversation partner. Free daily practice, premium unlimited access.",
+  description: "AI-powered immersive Chinese learning through real-world missions. Practice ordering coffee, taking a taxi, and making friends with an AI conversation partner. Free daily practice: 3 missions a day.",
   keywords: ["learn Chinese online", "Chinese conversation practice", "AI Chinese tutor", "task-based Chinese learning", "HSK practice", "Mandarin speaking", "中文学习"],
   authors: [{ name: "Tony Sheng" }],
   openGraph: {
     title: "Chinese Mission — AI-Powered Task-Based Chinese Learning",
-    description: "Practice real-world Chinese with AI. Complete missions in cafe, restaurant, hotel, travel, social, and work scenarios.",
+    description: "Practice real-world Chinese with AI. Complete missions in cafe and restaurant, transport, directions, introductions, friendship, and work scenarios.",
     type: "website",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
     title: "Chinese Mission — AI-Powered Task-Based Chinese Learning",
-    description: "Practice real-world Chinese with AI. Complete missions in cafe, restaurant, hotel, travel, social, and work scenarios.",
+    description: "Practice real-world Chinese with AI. Complete missions in cafe and restaurant, transport, directions, introductions, friendship, and work scenarios.",
   },
   robots: "index, follow",
   alternates: {
@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     "@context": "https://schema.org",
     "@type": "Course",
     name: "Chinese Mission",
-    description: "AI-powered immersive Chinese learning through real-world missions. Practice ordering coffee, booking hotels, and making friends with an AI conversation partner.",
+    description: "AI-powered immersive Chinese learning through real-world missions. Practice ordering coffee, taking a taxi, and making friends with an AI conversation partner.",
     provider: {
       "@type": "Organization",
       name: "Chinese Mission",
@@ -45,15 +45,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     inLanguage: "zh",
     courseMode: "AI conversation",
     hasCourseInstance: [
-      { "@type": "CourseInstance", name: "Cafe Mission", courseMode: "online" },
-      { "@type": "CourseInstance", name: "Restaurant Mission", courseMode: "online" },
-      { "@type": "CourseInstance", name: "Hotel Mission", courseMode: "online" },
-      { "@type": "CourseInstance", name: "Travel Mission", courseMode: "online" },
-      { "@type": "CourseInstance", name: "Social Mission", courseMode: "online" },
-      { "@type": "CourseInstance", name: "Work Mission", courseMode: "online" },
+      // The six mission groups in src/lib/data/scenario-meta.ts (20 missions in total).
+      { "@type": "CourseInstance", name: "Cafe & Restaurant", courseMode: "online" },
+      { "@type": "CourseInstance", name: "Taxi & Transport", courseMode: "online" },
+      { "@type": "CourseInstance", name: "Ask Directions", courseMode: "online" },
+      { "@type": "CourseInstance", name: "Self Introduction", courseMode: "online" },
+      { "@type": "CourseInstance", name: "Making Friends", courseMode: "online" },
+      { "@type": "CourseInstance", name: "Work Basics", courseMode: "online" },
     ],
+    // Same as the pricing page: the free plan (¥0, 3 missions a day) is the only plan on sale.
+    // Premium (planned ¥28/month, ¥168/year) gets an Offer once it can be bought.
     offers: {
       "@type": "Offer",
+      name: "Free plan",
+      description: "3 missions per day, all 20 missions",
       price: "0",
       priceCurrency: "CNY",
       availability: "https://schema.org/InStock",
