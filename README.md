@@ -1,12 +1,12 @@
 # Chinese Mission
 
-An immersive, task-based Chinese language learning platform. Learners complete real-world missions (ordering coffee, booking hotels, making friends) through AI-powered conversations with instant gloss support, pinyin annotation, and voice interaction.
+An immersive, task-based Chinese language learning platform. Learners complete real-world missions (ordering coffee, taking a taxi, making friends) through AI-powered conversations with instant gloss support, pinyin annotation, and voice interaction.
 
 Built with Next.js, TypeScript, and Tailwind CSS.
 
 ## Features
 
-- **Mission-based learning**: Complete practical tasks in simulated real-world scenarios (cafe, restaurant, hotel, travel, social, work)
+- **Mission-based learning**: Complete practical tasks in simulated real-world scenarios (café and restaurant, taxi and transport, asking directions, self-introduction, making friends, workplace basics)
 - **AI dialogue engine**: Chat with an NPC powered by any OpenAI-compatible API (OpenAI, Claude via proxy, DeepSeek, etc.)
 - **Rule-based fallback**: Built-in dialogue engine works without AI when no API key is configured
 - **Gloss line system**: Every Chinese sentence is broken into chunks with pinyin, literal gloss, and natural English translation
