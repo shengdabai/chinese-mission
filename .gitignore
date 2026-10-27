@@ -27,9 +27,8 @@ coverage/
 # turbo
 .turbo
 
-# lock files
+# lock files (package-lock.json is tracked: Vercel installs with npm and must get the audited versions)
 bun.lock
-package-lock.json
 
 # misc
 .DS_Store
