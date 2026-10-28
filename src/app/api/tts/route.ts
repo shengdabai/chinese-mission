@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
+import { checkBudget, readJsonCapped } from "@/lib/server/request-budget";
 
 // Microsoft Edge Neural Voices for zh-CN (curated short list).
 // Quality is far better than the iOS built-in Tingting compact voice.
@@ -20,10 +21,10 @@ const MAX_TEXT_LENGTH = 400;
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  let body: { text?: string; voice?: string; rate?: number };
-  try {
-    body = await request.json();
-  } catch {
+  const refused = checkBudget("tts", request);
+  if (refused) return refused;
+  const body = await readJsonCapped<{ text?: string; voice?: string; rate?: number }>(request, "tts");
+  if (!body) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 

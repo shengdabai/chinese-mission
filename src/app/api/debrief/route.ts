@@ -4,6 +4,7 @@ import { buildDebriefPrompt } from "@/lib/engine/prompts";
 import { generateDebrief } from "@/lib/engine/dialogue";
 import { getMission } from "@/lib/data/scenarios";
 import type { Session, DebriefResult, GlossItem } from "@/lib/types";
+import { checkBudget, readJsonCapped } from "@/lib/server/request-budget";
 
 interface DebriefRequest {
   missionId: string;
@@ -42,13 +43,14 @@ interface AIDebriefOutput {
 }
 
 export async function POST(request: NextRequest) {
+  const refused = checkBudget("debrief", request);
+  if (refused) return refused;
   // Parse body once, available in both try and catch
-  let body: DebriefRequest;
-  try {
-    body = await request.json();
-  } catch {
+  const parsed = await readJsonCapped<DebriefRequest>(request, "debrief");
+  if (!parsed || !parsed.session || !Array.isArray(parsed.session.turns)) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
+  const body: DebriefRequest = parsed;
 
   try {
     const mission = getMission(body.missionId);

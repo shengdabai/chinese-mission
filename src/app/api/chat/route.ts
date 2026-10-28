@@ -4,6 +4,7 @@ import { buildPolicyPrompt, buildNpcPrompt } from "@/lib/engine/prompts";
 import { processUserInput, detectScript } from "@/lib/engine/dialogue";
 import { getMission } from "@/lib/data/scenarios";
 import type { Mission, Session } from "@/lib/types";
+import { checkBudget, readJsonCapped } from "@/lib/server/request-budget";
 
 interface ChatRequest {
   missionId: string;
@@ -34,9 +35,16 @@ interface NpcOutput {
   emotion: string;
 }
 
+const MAX_USER_INPUT = 500;
+
 export async function POST(request: NextRequest) {
+  const refused = checkBudget("chat", request);
+  if (refused) return refused;
   try {
-    const body: ChatRequest = await request.json();
+    const body = await readJsonCapped<ChatRequest>(request, "chat");
+    if (!body || typeof body.userInput !== "string" || body.userInput.length > MAX_USER_INPUT || !body.session || !Array.isArray(body.session.turns)) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const mission = getMission(body.missionId);
 
     if (!mission) {
