@@ -479,7 +479,7 @@ const missionDataMap: Record<string, ScenarioData> = {
   ask_for_bill: missionDialogue(
     [{
       slot: "payment_request",
-      patterns: [/买单|结账|多少钱|\bmai\s*dan\b|\bjie\s*zhang\b|\bduo\s*shao\s*qian\b|\bthe\s+(?:bill|check)\b|\bcheck(?:\s*,\s*|\s+)please\b|\bhow\s+much\b/i],
+      patterns: [/买单|结账|多少钱|\bmai\s*dan\b|\bjie\s*zhang\b|\bduo\s*shao\s*qian\b|\bthe\s+(?:bill|check)\b|\b(?:bill|check)(?:\s*,\s*|\s+)please\b|\bhow\s+much\b/i],
       excludePatterns: [/不(?:要|用|想|需要)\s*(?:买单|结账)|\b(?:don't|do\s+not)\s+(?:want|need)\s+(?:the\s+)?(?:bill|check)\b/i],
       value: "买单",
     }],
@@ -525,7 +525,7 @@ const missionDataMap: Record<string, ScenarioData> = {
   stop_here: missionDialogue(
     [{
       slot: "stop_request",
-      patterns: [/这里停|这儿停|停一下|停车|\b(?:zhe\s*li|zher)\s*ting\b|\bting\s*(?:yi\s*xia|che)\b|\b(?:stop\s+here|pull\s+over|we(?:'re|\s+are)\s+here)\b/i, /^(?:到了|dao\s*le)(?:[，,\s]*(?:谢谢|xie\s*xie))?[。！!\s]*$/i],
+      patterns: [/这里停|这儿停|停一下|停车|\b(?:zhe\s*li|zher)\s*ting\b|\bting\s*(?:yi\s*xia|che)\b|\b(?:stop\s+here|pull\s+over|we(?:'re|\s+are)\s+here)\b/i, /^(?:(?:师傅[，,\s]*)?(?:我们)?到了|dao\s*le)(?:[，,。！!\s]*(?:谢谢|xie\s*xie))?[。！!\s]*$/i],
       excludePatterns: [/不(?:要|用|需要)(?:在)?(?:这里|这儿)?停|\bbu\s*(?:yao|yong)\s*(?:zai\s*)?(?:zhe\s*li\s*)?ting\b|\b(?:don't|do\s+not)\s+(?:stop|pull\s+over)\b/i],
       value: "stop_here",
     }],

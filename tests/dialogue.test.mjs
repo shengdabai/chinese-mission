@@ -266,8 +266,9 @@ for (const text of ['我要一杯柠檬茶，不要加冰', 'wo yao yi bei cha, 
 }
 
 for (const input of [
-  '快到了吗？', '还没到了', '还没到', '到了吗', '到了？', '到了 ?',
-  'kuài dào le ma?', 'hái méi dào le', 'dào le ma', 'dao le?',
+  '快到了吗？', '还没到了', '还没到', '快到了', '到了吗', '到了？', '到了 ?',
+  'kuài dào le ma?', 'kuai dao le ma', 'hái méi dào le', 'hai mei dao le', 'dào le ma', 'dao le?',
+  '师傅，快到了吗？', '我们还没到了', '我们快到了', '师傅，到了吗',
 ]) {
   test(`m7: an arrival question or negative statement does not request a stop: ${input}`, () => {
     const mission = getMission('m7');
@@ -278,14 +279,15 @@ for (const input of [
   });
 }
 
-for (const input of ['到了，就在这儿停', '到了，谢谢', 'dào le, xiè xie', 'daole, xiexie']) {
+for (const input of ['到了，就在这儿停', '到了，谢谢', 'dào le, xiè xie', 'daole, xiexie',
+  '师傅，到了', '我们到了', '到了。谢谢！', '师傅，我们到了。谢谢！']) {
   test(`m7: an affirmative arrival or explicit stop still completes: ${input}`, () => {
     const mission = getMission('m7');
     assert.equal(processUserInput(input, mission, newSession(mission)).taskStatus, 'completed');
   });
 }
 
-for (const input of ['Let me check the menu', 'Please check my order', 'A check of the menu', 'bill', 'checkplease']) {
+for (const input of ['Let me check the menu', 'I want to check the price', 'Please check my order', 'A check of the menu', 'bill', 'checkplease', 'billplease']) {
   test(`m3: an isolated bill/check word does not request payment: ${input}`, () => {
     const mission = getMission('m3');
     const response = processUserInput(input, mission, newSession(mission));
@@ -294,7 +296,7 @@ for (const input of ['Let me check the menu', 'Please check my order', 'A check 
   });
 }
 
-for (const input of ['The bill, please', 'Could I have the check?', 'Check, please', 'check please', '买单', '结账']) {
+for (const input of ['The bill, please', 'Could I have the check?', 'Check, please', 'check please', 'Bill, please', 'bill please', '买单', '结账']) {
   test(`m3: an explicit bill request completes: ${input}`, () => {
     const mission = getMission('m3');
     assert.equal(processUserInput(input, mission, newSession(mission)).taskStatus, 'completed');
