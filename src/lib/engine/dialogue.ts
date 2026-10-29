@@ -56,6 +56,7 @@ export function detectScript(
 interface SlotPattern {
   slot: string;
   patterns: RegExp[];
+  excludePatterns?: RegExp[];
   value: string; // the canonical value to record
 }
 
@@ -71,6 +72,8 @@ interface StateReplies {
 
 interface ScenarioData {
   slotPatterns: SlotPattern[];
+  /** Current missions can ask directly for their first missing required slot. */
+  slotPrompts?: Record<string, NpcReply>;
   /** Keyed by state code */
   stateReplies: Record<string, StateReplies>;
   /** Fallback when nothing matched */
@@ -424,7 +427,224 @@ const scenarioDataMap: Record<string, ScenarioData> = {
   hotel_check_in: hotelData,
 };
 
+// Mission codes and state codes in scenarios.ts differ from the older scenario
+// templates above. Keep each supported mission's intent and response together.
+const drinkPatterns: SlotPattern[] = [
+  { slot: "drink_type", patterns: [/拿铁|na\s?tie|\blatte\b/i], value: "拿铁" },
+  { slot: "drink_type", patterns: [/美式|mei\s?shi|\bamericano\b/i], value: "美式" },
+  { slot: "drink_type", patterns: [/卡布奇诺|\bcappuccino\b/i], value: "卡布奇诺" },
+  { slot: "drink_type", patterns: [/奶茶|nai\s?cha|\bmilk\s?tea\b/i], value: "奶茶" },
+  { slot: "drink_type", patterns: [/咖啡|ka\s?fei|\bcoffee\b/i], value: "咖啡" },
+  { slot: "drink_type", patterns: [/茶|\bcha\b|\btea\b/i], value: "茶" },
+];
+
+const unavailableTimePatterns = [
+  /没(?:有)?空|没有时间|不方便|\bmei\s*(?:you\s*)?kong\b|\bmei\s*you\s*shi\s*jian\b|\b(?:not\s+(?:available|free)|can't\s+make\s+it|cannot\s+make\s+it)\b/i,
+];
+
+function missionDialogue(
+  slotPatterns: SlotPattern[],
+  slotPrompts: Record<string, NpcReply>,
+  completionReply: NpcReply,
+): ScenarioData {
+  return { slotPatterns, slotPrompts, completionReply, stateReplies: {}, fallback: genericData.fallback };
+}
+
+const missionDataMap: Record<string, ScenarioData> = {
+  order_hot_latte: missionDialogue(
+    [
+      ...drinkPatterns,
+      { slot: "temperature", patterns: [/热|\bre\b|\bhot\b/i], value: "热的" },
+      { slot: "temperature", patterns: [/冰|冷|\bbing\b|\bleng\b|\bcold\b|\biced?\b/i], value: "冰的" },
+      ...cafeData.slotPatterns.filter((pattern) => pattern.slot === "size"),
+    ],
+    {
+      drink_type: { cn: "请问你想喝什么？", en: "What would you like to drink?" },
+      temperature: { cn: "好的！你要热的还是冰的？", en: "Great! Would you like it hot or iced?" },
+    },
+    { cn: "好的，马上为你做，请稍等。", en: "OK, I'll make that for you. One moment, please." },
+  ),
+  order_no_ice: missionDialogue(
+    [
+      ...drinkPatterns,
+      { slot: "ice_preference", patterns: [/不(?:要)?加冰|不要冰|去冰|无冰|\bbu\s*(?:yao\s*)?jia\s*bing\b|\bbu\s*yao\s*bing\b|\bqu\s*bing\b|\b(?:no|without)\s+ice\b/i], value: "不加冰" },
+      ...cafeData.slotPatterns.filter((pattern) => pattern.slot === "size"),
+    ],
+    {
+      drink_type: { cn: "好的，你想喝什么饮料？", en: "OK, what drink would you like?" },
+      ice_preference: { cn: "饮料要加冰吗？", en: "Would you like ice in your drink?" },
+    },
+    { cn: "好的，不加冰，马上为你做。", en: "OK, no ice. I'll make that for you." },
+  ),
+  ask_for_bill: missionDialogue(
+    [{
+      slot: "payment_request",
+      patterns: [/买单|结账|多少钱|\bmai\s*dan\b|\bjie\s*zhang\b|\bduo\s*shao\s*qian\b|\b(?:bill|check)\b|\bhow\s+much\b/i],
+      excludePatterns: [/不(?:要|用|想|需要)\s*(?:买单|结账)|\b(?:don't|do\s+not)\s+(?:want|need)\s+(?:the\s+)?(?:bill|check)\b/i],
+      value: "买单",
+    }],
+    { payment_request: { cn: "请问需要什么帮助？", en: "How can I help you?" } },
+    { cn: "好的，马上给你拿账单。", en: "Of course. I'll bring your bill right away." },
+  ),
+  takeaway_order: missionDialogue(
+    [
+      { slot: "food_item", patterns: [/宫保鸡丁|炒饭|炒面|米饭|饺子|面条|\bgong\s*bao\s*ji\s*ding\b|\b(?:kung\s*pao\s*chicken|fried\s+rice|noodles|dumplings)\b/i], value: "food_selected" },
+      {
+        slot: "takeaway_request",
+        patterns: [/打包|带走|外带|\bda\s*bao\b|\bdai\s*zou\b|\b(?:takeaway|takeout|take\s+away|to\s+go)\b/i],
+        excludePatterns: [/不(?:要|用|想|需要)\s*(?:打包|带走|外带)|\bbu\s*(?:yao|yong|xiang)\s*(?:da\s*bao|dai\s*zou)\b|\b(?:no|not)\s+(?:takeaway|takeout|to\s+go)\b|\b(?:don't|do\s+not)\s+(?:want\s+)?(?:takeaway|takeout|to\s+go)\b/i],
+        value: "打包",
+      },
+    ],
+    {
+      food_item: { cn: "好的，你想点什么菜？", en: "OK, what food would you like to order?" },
+      takeaway_request: { cn: "你在这里吃还是带走？", en: "For here or to go?" },
+    },
+    { cn: "好的，给你打包，请稍等。", en: "OK, I'll pack that to go. One moment, please." },
+  ),
+  tell_destination: missionDialogue(
+    [{
+      slot: "destination",
+      patterns: [/机场|火车站|地铁站|天安门|酒店|这个地方|\b(?:ji\s*chang|huo\s*che\s*zhan|di\s*tie\s*zhan|tian\s*an\s*men|jiu\s*dian|zhe\s*ge\s*di\s*fang)\b|\b(?:airport|train\s+station|subway\s+station|tiananmen|hotel|this\s+place)\b/i],
+      excludePatterns: [/不(?:要|用|想|需要)去|\bbu\s*(?:yao|yong|xiang)\s*qu\b|\b(?:don't|do\s+not)\s+(?:want\s+to\s+)?go\b/i],
+      value: "destination_provided",
+    }],
+    { destination: { cn: "请问你要去哪里？", en: "Where would you like to go?" } },
+    { cn: "好的，知道了，我们现在出发。", en: "Got it. Let's get going." },
+  ),
+  ask_slow_down: missionDialogue(
+    [{
+      slot: "slow_down_request",
+      patterns: [/慢一点|开慢|太快了|\bman\s*(?:yi\s*dian|dian)\b|\btai\s*kuai\s*le\b|\b(?:slow\s+down|slower|too\s+fast)\b/i],
+      excludePatterns: [/不(?:要|用|需要)(?:开)?慢|\bbu\s*(?:yao|yong)\s*(?:kai\s*)?man\b|\b(?:don't|do\s+not)\s+(?:drive\s+)?slow(?:\s+down|er)\b/i],
+      value: "slow_down",
+    }],
+    { slow_down_request: { cn: "你想让我开慢一点吗？", en: "Would you like me to slow down?" } },
+    { cn: "好的，我开慢一点。", en: "OK, I'll drive more slowly." },
+  ),
+  stop_here: missionDialogue(
+    [{
+      slot: "stop_request",
+      patterns: [/这里停|这儿停|停一下|停车|到了|\b(?:zhe\s*li|zher)\s*ting\b|\bting\s*(?:yi\s*xia|che)\b|\bdao\s*le\b|\b(?:stop\s+here|pull\s+over|we(?:'re|\s+are)\s+here)\b/i],
+      excludePatterns: [/不(?:要|用|需要)(?:在)?(?:这里|这儿)?停|\bbu\s*(?:yao|yong)\s*(?:zai\s*)?(?:zhe\s*li\s*)?ting\b|\b(?:don't|do\s+not)\s+(?:stop|pull\s+over)\b/i],
+      value: "stop_here",
+    }],
+    { stop_request: { cn: "你想在哪里下车？", en: "Where would you like to get out?" } },
+    { cn: "好的，在这里停。下车请注意安全。", en: "OK, I'll stop here. Take care getting out." },
+  ),
+  where_is_subway: missionDialogue(
+    [{ slot: "location_query", patterns: [/地铁站.*(?:哪里|哪儿|怎么走)|怎么走|\bdi\s*tie\s*zhan\s*(?:zai\s*)?(?:na\s*li|nar)\b|\bzen\s*me\s*zou\b|\bwhere\s+is\s+the\s+(?:subway|metro)\s+station\b|\bhow\s+(?:do\s+i\s+get|to\s+go)\s+to\s+the\s+(?:subway|metro)\b/i], value: "subway_location" }],
+    { location_query: { cn: "你好，你想去哪里？", en: "Hello, where would you like to go?" } },
+    { cn: "地铁站在前面，过马路后右转就到了。", en: "The subway station is ahead. Cross the road and turn right." },
+  ),
+  how_far: missionDialogue(
+    [{ slot: "distance_query", patterns: [/多远|远不远|多长时间|\bduo\s*yuan\b|\byuan\s*bu\s*yuan\b|\bduo\s*chang\s*shi\s*jian\b|\bhow\s+(?:far|long)\b/i], value: "distance_requested" }],
+    { distance_query: { cn: "你想问距离还是时间？", en: "Would you like to know the distance or travel time?" } },
+    { cn: "不太远，走路大概十分钟。", en: "It's not far, about ten minutes on foot." },
+  ),
+  which_way: missionDialogue(
+    [{ slot: "direction_query", patterns: [/(?:往|走|拐|转).*(?:左|右)|左.*还是.*右|怎么走|\b(?:zuo|you)\s*(?:zou|guai|zhuan)\b|\bzen\s*me\s*zou\b|\b(?:which\s+way|(?:turn|go)\s+(?:left|right))\b/i], value: "direction_requested" }],
+    { direction_query: { cn: "你想确认往哪边走？", en: "Which direction would you like to check?" } },
+    { cn: "在前面的红绿灯左转，然后一直走。", en: "Turn left at the traffic lights ahead, then go straight." },
+  ),
+  basic_intro: missionDialogue(
+    [
+      { slot: "greeting", patterns: [/你好|您好|很高兴认识你|\bni\s*hao\b|\b(?:hello|hi|nice\s+to\s+meet\s+you)\b/i], value: "greeted" },
+      { slot: "name", patterns: [/(?:我叫|叫我)[\p{Script=Han}a-zA-Z]+/u, /\b(?:wo\s*jiao|jiao\s*wo)\s+[a-z]+|\b(?:my\s+name\s+is|call\s+me)\s+[a-z]+/i], value: "name_provided" },
+    ],
+    {
+      greeting: { cn: "你好！很高兴认识你。", en: "Hello! Nice to meet you." },
+      name: { cn: "你好，你叫什么名字？", en: "Hello, what's your name?" },
+    },
+    { cn: "很高兴认识你！欢迎一起练习中文。", en: "Nice to meet you! Let's practice Chinese together." },
+  ),
+  where_from: missionDialogue(
+    [{ slot: "country", patterns: [/(?:我是|我从)(?:美国|法国|英国|德国|日本|韩国|中国|加拿大|澳大利亚)|^(?:美国|法国|英国|德国|日本|韩国|中国|加拿大|澳大利亚)[人。！!]?$/, /\bwo\s*(?:shi|cong)\s*(?:mei\s*guo|fa\s*guo|ying\s*guo|de\s*guo|ri\s*ben|han\s*guo|zhong\s*guo|jia\s*na\s*da|ao\s*da\s*li\s*ya)\b|\b(?:i\s+am|i'm)\s+(?:from\s+(?:the\s+)?(?:usa|us|united\s+states|france|uk|united\s+kingdom|germany|japan|korea|china|canada|australia)|american|french|british|german|japanese|korean|chinese|canadian|australian)\b/i], value: "country_provided" }],
+    { country: { cn: "你是哪国人？", en: "Where are you from?" } },
+    { cn: "原来如此，欢迎来中国！", en: "I see. Welcome to China!" },
+  ),
+  what_do_you_do: missionDialogue(
+    [{ slot: "occupation", patterns: [/我是.*(?:老师|教师|学生|工程师|医生|设计师|程序员)|我在.*(?:公司|学校|医院).*(?:上班|工作)|我做IT的|\bwo\s*shi\s*(?:lao\s*shi|xue\s*sheng|gong\s*cheng\s*shi|yi\s*sheng|she\s*ji\s*shi)\b|\b(?:i\s+am|i'm)\s+(?:a|an)\s+(?:teacher|student|engineer|doctor|designer|programmer)\b|\bi\s+work\s+(?:at|in|for)\b/i], value: "occupation_provided" }],
+    { occupation: { cn: "你做什么工作？", en: "What do you do?" } },
+    { cn: "原来如此，很高兴了解你的工作！", en: "I see. It's nice to learn about your work!" },
+  ),
+  add_wechat: missionDialogue(
+    [{ slot: "wechat_request", patterns: [/(?:加.*微信|微信号.*多少|扫.*二维码)|\bjia\s*(?:ge\s*)?wei\s*xin\b|\bwei\s*xin\s*hao\s*shi\s*duo\s*shao\b|\bsao\s*yi\s*xia.*er\s*wei\s*ma\b|\b(?:add|exchange|scan)\b.*\b(?:wechat|qr\s+code)\b|\b(?:your|my)\s+wechat\s+(?:id|number)\b/i], value: "wechat_requested" }],
+    { wechat_request: { cn: "我们以后怎么联系？", en: "How can we keep in touch?" } },
+    { cn: "好啊，我们加个微信吧。", en: "Sure, let's add each other on WeChat." },
+  ),
+  invite_dinner: missionDialogue(
+    [
+      { slot: "invitation", patterns: [/一起吃饭|我请你|\byi\s*qi\s*chi\s*fan\b|\bwo\s*qing\s*ni\b|\b(?:let's|shall\s+we|would\s+you\s+like\s+to)\s+(?:have\s+)?(?:dinner|lunch|eat)\b/i], value: "dinner_invitation" },
+      {
+        slot: "time_suggestion",
+        patterns: [/今天|明天|后天|周[一二三四五六日末天]|星期[一二三四五六日天]|\b(?:jin\s*tian|ming\s*tian|hou\s*tian|zhou\s*mo)\b|\b(?:today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|weekend)\b/i],
+        excludePatterns: unavailableTimePatterns,
+        value: "time_provided",
+      },
+    ],
+    {
+      invitation: { cn: "你有什么安排？", en: "What would you like to do?" },
+      time_suggestion: { cn: "好啊，什么时候一起吃饭？", en: "Sure! When shall we have dinner?" },
+    },
+    { cn: "好啊，那就说定了，到时候见！", en: "Sounds good. It's a plan. See you then!" },
+  ),
+  talk_hobbies: missionDialogue(
+    [{ slot: "own_hobby", patterns: [/我(?:很|也)?喜欢(?:跑步|游泳|看书|阅读|音乐|电影|旅行|运动|打球|唱歌|跳舞)|\bwo\s*(?:ye\s*)?xi\s*huan\s*(?:pao\s*bu|you\s*yong|kan\s*shu|yin\s*yue|yun\s*dong)\b|\bi\s+(?:like|enjoy|love)\s+(?:running|swimming|reading|music|movies|travel|sports|singing|dancing)\b/i], value: "hobby_provided" }],
+    { own_hobby: { cn: "你平时喜欢做什么？", en: "What do you like doing in your free time?" } },
+    { cn: "这个爱好很不错，有空我们一起吧！", en: "That's a great hobby. Let's try it together sometime!" },
+  ),
+  greet_colleagues: missionDialogue(
+    [{ slot: "greeting", patterns: [/你好|您好|早上好|吃了吗|周末过得怎么样|\bni\s*hao\b|\bzao\s*shang\s*hao\b|\bchi\s*le\s*ma\b|\bzhou\s*mo\s*guo\s*de\s*zen\s*me\s*yang\b|\b(?:hello|hi|good\s+morning|how\s+was\s+your\s+weekend)\b/i], value: "greeted" }],
+    { greeting: { cn: "早上好！", en: "Good morning!" } },
+    { cn: "早上好！祝你今天工作顺利。", en: "Good morning! Have a good day at work." },
+  ),
+  ask_for_help: missionDialogue(
+    [{
+      slot: "help_request",
+      patterns: [/帮我|帮.*忙|这个我不太懂|\bbang\s*wo\b|\bbang.*mang\b|\bzhe\s*ge\s*wo\s*bu\s*tai\s*dong\b|\b(?:help\s+me|give\s+me\s+a\s+hand|i\s+don't\s+understand\s+this)\b/i],
+      excludePatterns: [/不(?:用|要|需要)帮|\bbu\s*(?:yong|yao)\s*bang\b|\b(?:don't|do\s+not)\s+help\s+me\b/i],
+      value: "help_requested",
+    }],
+    { help_request: { cn: "你需要什么帮助？", en: "What do you need help with?" } },
+    { cn: "当然可以，我们一起看看。", en: "Of course. Let's take a look together." },
+  ),
+  schedule_meeting: missionDialogue(
+    [
+      { slot: "meeting_topic", patterns: [/项目|进度|预算|计划|设计|\b(?:xiang\s*mu|jin\s*du|yu\s*suan|ji\s*hua|she\s*ji)\b|\b(?:project|progress|budget|plan|design)\b/i], value: "topic_provided" },
+      {
+        slot: "time_proposal",
+        patterns: [/今天|明天|后天|周[一二三四五六日天]|星期[一二三四五六日天]|[一二三四五六七八九十两\d]+点(?:钟|半)?(?=开会|见|有空|[，,。！!？?\s]|$)|\b(?:jin\s*tian|ming\s*tian|hou\s*tian)\b|\b(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d+\s*(?:am|pm))\b/i],
+        excludePatterns: unavailableTimePatterns,
+        value: "time_proposed",
+      },
+    ],
+    {
+      meeting_topic: { cn: "这次会议想讨论什么？", en: "What would you like to discuss at the meeting?" },
+      time_proposal: { cn: "好的，你想约什么时间？", en: "OK, what time would you suggest?" },
+    },
+    { cn: "好的，就按你说的时间讨论这个话题。", en: "OK, let's discuss that at the time you suggested." },
+  ),
+  call_in_sick: missionDialogue(
+    [
+      {
+        slot: "leave_request",
+        patterns: [/请(?:个|一[天周])?(?:病)?假|\bqing\s*(?:ge\s*|yi\s*tian\s*)?(?:bing\s*)?jia\b|\b(?:day\s+off|sick\s+leave|take\s+(?:a\s+)?leave)\b/i],
+        excludePatterns: [/不(?:需要|想|用|要)?请|\bbu\s*(?:(?:xu\s*yao|xiang|yong|yao)\s*)?qing\b|\b(?:don't|do\s+not)\s+(?:need|want)\s+(?:a\s+)?(?:day\s+off|sick\s+leave)\b/i],
+        value: "leave_requested",
+      },
+      { slot: "reason", patterns: [/身体不舒服|生病|病假|感冒|发烧|头疼|头痛|\bshen\s*ti\s*bu\s*shu\s*fu\b|\b(?:sheng\s*bing|bing\s*jia|gan\s*mao|fa\s*shao|tou\s*teng)\b|\b(?:sick|ill|unwell|fever|headache)\b/i], value: "illness" },
+    ],
+    {
+      leave_request: { cn: "需要请假吗？", en: "Do you need to take leave?" },
+      reason: { cn: "你身体哪里不舒服？", en: "What's wrong? Are you feeling unwell?" },
+    },
+    { cn: "好的，好好休息，祝你早日康复。", en: "OK, get some rest. I hope you feel better soon." },
+  ),
+};
+
 function getScenarioData(mission: Mission): ScenarioData {
+  if (Object.hasOwn(missionDataMap, mission.code)) return missionDataMap[mission.code];
   // Try mission code prefix, scenario id, or fall back
   const code = mission.code.toLowerCase();
   for (const key of Object.keys(scenarioDataMap)) {
@@ -480,6 +700,11 @@ export function processUserInput(
   const script = detectScript(input);
   const scenarioData = getScenarioData(mission);
   const trimmed = input.trim();
+  // Match tone-marked and plain pinyin identically, keeping the original text
+  // in the response. Limit normalization to the new mission-specific rules.
+  const matchInput = scenarioData.slotPrompts
+    ? trimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    : trimmed;
 
   // Copy existing filled slots
   const filledSlots: Record<string, string> = { ...session.slotsFilledMap };
@@ -489,8 +714,9 @@ export function processUserInput(
   // Match input against slot patterns
   for (const sp of scenarioData.slotPatterns) {
     if (sp.slot in filledSlots) continue; // already filled
+    if (sp.excludePatterns?.some((pattern) => pattern.test(matchInput))) continue;
     for (const pat of sp.patterns) {
-      if (pat.test(trimmed)) {
+      if (pat.test(matchInput)) {
         filledSlots[sp.slot] = sp.value;
         newlyFilled.push(sp.slot);
         break;
@@ -499,8 +725,20 @@ export function processUserInput(
   }
 
   // Determine state AFTER slot filling
-  const currentState = determineCurrentStateName(mission, filledSlots);
-  const understood = newlyFilled.length > 0 || trimmed.length > 0;
+  const missingSlots = mission.requiredSlots.filter((s) => !(s in filledSlots));
+  let currentState = determineCurrentStateName(mission, filledSlots);
+  if (scenarioData.slotPrompts) {
+    const pendingState = mission.states.find((state) =>
+      state.requiredSlotsInState.some((slot) => missingSlots.includes(slot)),
+    );
+    currentState = missingSlots.length === 0
+      ? mission.states[mission.states.length - 1]?.code ?? "completed"
+      : pendingState?.code ?? session.currentState;
+  }
+  // Recognize courtesy without adding an unrelated slot to the progress count.
+  const courtesyUnderstood = Boolean(scenarioData.slotPrompts) &&
+    /^(?:你好|您好|嗨|谢谢(?:你|您)?|ni\s*hao|nin\s*hao|xie\s*xie(?:\s*(?:ni|nin))?|hello|hi|thanks|thank\s+you)[!！?？。,.，\s]*$/i.test(matchInput);
+  const understood = newlyFilled.length > 0 || courtesyUnderstood;
 
   // Check completion
   const isComplete = allRequiredSlotsFilled(mission, filledSlots);
@@ -511,6 +749,8 @@ export function processUserInput(
     // If there is a final state reply, use it; otherwise use completion
     const stateReplies = scenarioData.stateReplies[currentState];
     reply = stateReplies?.["*"] ?? scenarioData.completionReply;
+  } else if (scenarioData.slotPrompts) {
+    reply = scenarioData.slotPrompts[missingSlots[0]] ?? scenarioData.fallback;
   } else {
     const stateReplies = scenarioData.stateReplies[currentState];
     if (stateReplies) {
@@ -532,13 +772,10 @@ export function processUserInput(
       errorTags.push("empty_input");
     }
     // Still return what we have – the fallback reply asks to repeat
-    if (!scenarioData.stateReplies[currentState]) {
+    if (!scenarioData.slotPrompts && !scenarioData.stateReplies[currentState]) {
       reply = scenarioData.fallback;
     }
   }
-
-  // Determine missing slots
-  const missingSlots = mission.requiredSlots.filter((s) => !(s in filledSlots));
 
   // Determine task status
   let taskStatus: "in_progress" | "completed" | "failed" = "in_progress";
@@ -548,7 +785,7 @@ export function processUserInput(
 
   return {
     normalizedUserCn: trimmed,
-    understood: understood && newlyFilled.length > 0,
+    understood,
     taskStatus,
     slotsFilled: Object.keys(filledSlots),
     missingSlots,
