@@ -69,12 +69,29 @@ export function checkBudget(
 
 /** Reads the JSON body with a hard size cap (content-length can be absent or wrong). */
 export async function readJsonCapped<T>(request: Request, name: BudgetName): Promise<T | null> {
-  const text = await request.text();
-  if (new TextEncoder().encode(text).length > BUDGETS[name].maxBodyBytes) return null;
+  if (!request.body) return null;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
   try {
+    reader = request.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > BUDGETS[name].maxBodyBytes) {
+        await reader.cancel();
+        return null;
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode();
     return JSON.parse(text) as T;
   } catch {
     return null;
+  } finally {
+    reader?.releaseLock();
   }
 }
 

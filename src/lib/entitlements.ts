@@ -44,12 +44,16 @@ function writeQuota(q: DailyQuota): void {
 }
 
 /**
- * Check premium entitlement. Currently uses a localStorage debug flag for development;
- * production must replace this with `await Purchases.getCustomerInfo()` from RevenueCat.
+ * The local debug flag is only for development. Until verified entitlements are
+ * integrated, production must never grant Premium from browser storage.
  */
 export function isPremium(): boolean {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(PREMIUM_KEY) === "true";
+  if (process.env.NODE_ENV !== "development" || typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(PREMIUM_KEY) === "true";
+  } catch {
+    return false;
+  }
 }
 
 export function attemptsRemaining(): number {
