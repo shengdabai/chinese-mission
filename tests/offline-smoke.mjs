@@ -94,7 +94,28 @@ try {
       results.push({id, language, turns:inputs.length, result:debrief.result, score:debrief.score, aiPowered:debrief.aiPowered});
     }
   }
-  console.log(JSON.stringify({conversations:results.length, passed:results.length, failed:0, paidCalls:0}));
+  // The server must retain the same evidence as the browser's local fallback.
+  const evidenceCases = [
+    { rawInput: '买单', hintUsed: 1, detectedScript: 'hanzi' },
+    { rawInput: 'Bill, please', hintUsed: 0, detectedScript: 'en' },
+  ];
+  for (const evidence of evidenceCases) {
+    const session = {
+      turns: [{ role: 'user', understood: true, ...evidence }],
+      slotsFilledMap: { payment_request: 'true' }, hintUsageCount: evidence.hintUsed,
+    };
+    const http = await fetch(`${base}/api/debrief`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-real-ip': 'evidence-fixture' },
+      body: JSON.stringify({ missionId: 'm3', session }), signal: AbortSignal.timeout(5000),
+    });
+    assert.equal(http.status, 200);
+    const debrief = await http.json();
+    assert.equal(debrief.aiPowered, false);
+    assert.equal(debrief.strengths.some(s => s.includes('without using hints')), evidence.hintUsed === 0);
+    assert.equal(debrief.strengths.some(s => s.includes('Chinese characters')), evidence.detectedScript === 'hanzi');
+    assert.equal(debrief.topFixes.some(fix => fix.type === 'script'), evidence.detectedScript === 'en');
+  }
+  console.log(JSON.stringify({conversations:results.length, passed:results.length, evidenceCases:evidenceCases.length, failed:0, paidCalls:0}));
 
 } finally {
   server.kill('SIGTERM');

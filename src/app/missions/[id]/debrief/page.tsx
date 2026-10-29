@@ -2,42 +2,31 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DebriefCard from "@/components/DebriefCard";
-import type { Mission, DebriefResult, GlossItem, Turn } from "@/lib/types";
+import type { Mission, DebriefResult, GlossItem } from "@/lib/types";
+import { safeParseJSON } from "@/lib/utils";
+import { isStoredSession, isStringArray, updatePhrasebook, updateStoredArray, type StoredSession } from "@/lib/storage";
+import { isMissionComplete } from "@/lib/engine/dialogue";
 
 export default function DebriefPage() {
   const params = useParams();
   const router = useRouter();
   const [mission, setMission] = useState<Mission | null>(null);
   const [debrief, setDebrief] = useState<DebriefResult | null>(null);
+  const [storageError, setStorageError] = useState(false);
 
   useEffect(() => {
     import("@/lib/data/scenarios").then(async (scenarioMod) => {
       const m = scenarioMod.getMission(params.id as string);
-      if (!m) return;
+      if (!m) { router.replace("/missions"); return; }
       setMission(m);
 
       // Load session data
-      const sessionData = localStorage.getItem(`chinese-mission-session-${m.id}`);
-      if (sessionData) {
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = JSON.parse(sessionData);
-        } catch {
-          router.push(`/missions/${m.id}/warmup`);
-          return;
-        }
+      const parsed = safeParseJSON<StoredSession | null>(`chinese-mission-session-${m.id}`, null, isStoredSession);
+      if (parsed && isMissionComplete(m, parsed.filledSlots)) {
 
         // Mark mission as completed
-        let completed: string[];
-        try {
-          completed = JSON.parse(localStorage.getItem("chinese-mission-completed") || "[]");
-        } catch {
-          completed = [];
-        }
-        if (!completed.includes(m.id)) {
-          completed.push(m.id);
-          localStorage.setItem("chinese-mission-completed", JSON.stringify(completed));
-        }
+        setStorageError(!updateStoredArray("chinese-mission-completed", isStringArray,
+          (completed) => completed.includes(m.id) ? completed : [...completed, m.id]));
 
         // Try API route first (AI-powered debrief) with 5s timeout
         try {
@@ -50,10 +39,8 @@ export default function DebriefPage() {
             body: JSON.stringify({
               missionId: m.id,
               session: {
-                turns: parsed.turns || [],
-                slotsFilledMap: Object.fromEntries(
-                  (Array.isArray(parsed.filledSlots) ? parsed.filledSlots : []).map((s: string) => [s, "true"]),
-                ),
+                turns: parsed.turns,
+                slotsFilledMap: Object.fromEntries(parsed.filledSlots.map((s) => [s, "true"])),
                 hintUsageCount: parsed.hintUsageCount || 0,
               },
             }),
@@ -75,10 +62,8 @@ export default function DebriefPage() {
           missionId: m.id,
           status: "completed" as const,
           currentState: "complete",
-          slotsFilledMap: Object.fromEntries(
-            (Array.isArray(parsed.filledSlots) ? parsed.filledSlots : []).map((s: string) => [s, "true"]),
-          ),
-          turns: (Array.isArray(parsed.turns) ? parsed.turns : []) as Turn[],
+          slotsFilledMap: Object.fromEntries(parsed.filledSlots.map((s) => [s, "true"])),
+          turns: parsed.turns.map((turn) => ({ ...turn, rawInput: turn.rawInput ?? turn.npcReplyCn ?? "" })),
           hintLevel: 0,
           startedAt: new Date().toISOString(),
         };
@@ -99,17 +84,6 @@ export default function DebriefPage() {
     const pattern: GlossItem = debrief.transferPatterns[index];
     if (!pattern) return;
 
-    let phrasebook: { textCn: string }[];
-    try {
-      phrasebook = JSON.parse(localStorage.getItem("chinese-mission-phrasebook") || "[]");
-    } catch {
-      phrasebook = [];
-    }
-    // Prevent duplicates
-    if (phrasebook.some((p: { textCn: string }) => p.textCn === pattern.hanzi)) {
-      setSavedIndices((prev) => new Set(prev).add(index));
-      return;
-    }
     const item = {
       id: `pb_${Date.now()}`,
       textCn: pattern.hanzi,
@@ -118,9 +92,10 @@ export default function DebriefPage() {
       masteryScore: 0.3,
       savedAt: new Date().toISOString(),
     };
-    phrasebook.push(item);
-    localStorage.setItem("chinese-mission-phrasebook", JSON.stringify(phrasebook));
-    setSavedIndices((prev) => new Set(prev).add(index));
+    const saved = updatePhrasebook(
+      (items) => items.some((p) => p.textCn === pattern.hanzi) ? items : [...items, item]);
+    setStorageError(!saved);
+    if (saved) setSavedIndices((prev) => new Set(prev).add(index));
   };
 
   if (!mission || !debrief) {
@@ -147,6 +122,7 @@ export default function DebriefPage() {
       </div>
 
       <div className="max-w-lg mx-auto px-5 py-6">
+        {storageError && <p role="alert" className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700 mb-4">Progress or expressions could not be saved. Existing data was kept.</p>}
         <DebriefCard
           debrief={debrief}
           savedIndices={savedIndices}

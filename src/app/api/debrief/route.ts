@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, parseJSON, isAIConfigured } from "@/lib/engine/ai-client";
 import { buildDebriefPrompt } from "@/lib/engine/prompts";
-import { generateDebrief } from "@/lib/engine/dialogue";
+import { generateDebrief, detectScript } from "@/lib/engine/dialogue";
 import { getMission } from "@/lib/data/scenarios";
-import type { Session, DebriefResult, GlossItem } from "@/lib/types";
+import type { Session, DebriefResult, Turn } from "@/lib/types";
 import { checkBudget, readJsonCapped } from "@/lib/server/request-budget";
+import { normalizeTransferPatterns } from "@/lib/debrief-patterns";
 
 interface DebriefRequest {
   missionId: string;
@@ -16,6 +17,7 @@ interface DebriefRequest {
       understood?: boolean;
       errorTags?: string[];
       hintUsed?: number;
+      detectedScript?: Turn["detectedScript"];
     }>;
     slotsFilledMap: Record<string, string>;
     hintUsageCount?: number;
@@ -75,6 +77,7 @@ export async function POST(request: NextRequest) {
           understood: t.understood,
           errorTags: t.errorTags,
           hintUsed: t.hintUsed,
+          detectedScript: t.detectedScript ?? (typeof t.rawInput === "string" ? detectScript(t.rawInput) : undefined),
           timestamp: new Date().toISOString(),
         })),
         hintLevel: 0,
@@ -110,16 +113,7 @@ export async function POST(request: NextRequest) {
         after: f.after,
         reason: f.reason,
       })),
-      transferPatterns: (aiOutput.transfer_patterns || []).map(
-        (p): GlossItem => ({
-          hanzi: p.hanzi,
-          pinyin: p.pinyin,
-          chunks: p.chunks,
-          gloss: p.gloss,
-          naturalEn: p.naturalEn,
-          level: (p.level as GlossItem["level"]) || "A0",
-        }),
-      ),
+      transferPatterns: normalizeTransferPatterns(aiOutput.transfer_patterns),
       aiPowered: true,
     };
 
@@ -143,6 +137,8 @@ export async function POST(request: NextRequest) {
             npcReplyCn: t.npcReplyCn,
             understood: t.understood,
             errorTags: t.errorTags,
+            hintUsed: t.hintUsed,
+            detectedScript: t.detectedScript ?? (typeof t.rawInput === "string" ? detectScript(t.rawInput) : undefined),
             timestamp: new Date().toISOString(),
           })),
           hintLevel: 0,

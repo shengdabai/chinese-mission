@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { scenarioMeta } from "@/lib/data/scenario-meta";
+import { safeParseJSON } from "@/lib/utils";
+import { isStoredUser, isStringArray, readPhrasebook, completedMissionIds } from "@/lib/storage";
 
 interface UserData {
   goal: string;
@@ -25,32 +27,18 @@ export default function ProfilePage() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const userData = localStorage.getItem("chinese-mission-user");
+    const userData = safeParseJSON<UserData | null>("chinese-mission-user", null, isStoredUser);
     if (!userData) {
       router.replace("/onboarding");
       return;
     }
 
-    try {
-      setUser(JSON.parse(userData));
-      setIsReady(true);
-    } catch {
-      router.replace("/onboarding");
-      return;
-    }
-
-    let completed: string[];
-    try {
-      completed = JSON.parse(localStorage.getItem("chinese-mission-completed") || "[]");
-    } catch {
-      completed = [];
-    }
-    let phrasebook: unknown[];
-    try {
-      phrasebook = JSON.parse(localStorage.getItem("chinese-mission-phrasebook") || "[]");
-    } catch {
-      phrasebook = [];
-    }
+    setUser(userData);
+    setIsReady(true);
+    const completed = completedMissionIds(
+      safeParseJSON<string[]>("chinese-mission-completed", [], isStringArray),
+      scenarioMeta.flatMap((s) => s.missionIds));
+    const phrasebook = readPhrasebook();
 
     const scenarioStats: Record<string, { completed: number; total: number }> = {};
     let totalMissions = 0;

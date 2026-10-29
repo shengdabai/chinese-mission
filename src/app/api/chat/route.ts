@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, parseJSON, isAIConfigured } from "@/lib/engine/ai-client";
 import { buildPolicyPrompt, buildNpcPrompt } from "@/lib/engine/prompts";
-import { processUserInput, detectScript } from "@/lib/engine/dialogue";
+import { processUserInput, detectScript, isMissionComplete } from "@/lib/engine/dialogue";
 import { getMission } from "@/lib/data/scenarios";
 import type { Mission, Session } from "@/lib/types";
 import { checkBudget, readJsonCapped } from "@/lib/server/request-budget";
@@ -108,8 +108,7 @@ async function handleAIEngine(body: ChatRequest, mission: Mission) {
   }
 
   // Check if all required slots are filled
-  const allFilled = mission.requiredSlots.every((s) => s in updatedSlots);
-  const taskStatus = allFilled ? "completed" : policy.task_status;
+  const taskStatus = isMissionComplete(mission, Object.keys(updatedSlots)) ? "completed" : "in_progress";
 
   return NextResponse.json({
     normalizedUserCn: policy.user_intent_cn || body.userInput,
@@ -117,8 +116,8 @@ async function handleAIEngine(body: ChatRequest, mission: Mission) {
     taskStatus,
     slotsFilled: Object.keys(updatedSlots),
     missingSlots: mission.requiredSlots.filter((s) => !(s in updatedSlots)),
-    npcReplyCn: npc.reply_cn,
-    npcReplyEn: npc.reply_en,
+    npcReplyCn: npc.reply_cn ?? "",
+    npcReplyEn: npc.reply_en ?? "",
     currentState: policy.next_state || body.session.currentState,
     errorTags: policy.error_tags || [],
     hintAvailable: true,

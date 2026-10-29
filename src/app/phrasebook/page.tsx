@@ -2,41 +2,26 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import GlossLine from "@/components/GlossLine";
-
-interface PhrasebookEntry {
-  id: string;
-  textCn: string;
-  gloss: {
-    hanzi: string;
-    pinyin: string;
-    chunks: string[];
-    gloss: string[];
-    naturalEn: string;
-    note?: string;
-  };
-  sourceMissionId: string;
-  masteryScore: number;
-  savedAt: string;
-}
+import { readPhrasebook, updatePhrasebook, type StoredPhrase } from "@/lib/storage";
 
 export default function PhrasebookPage() {
   const router = useRouter();
-  const [items, setItems] = useState<PhrasebookEntry[]>([]);
+  const [items, setItems] = useState<StoredPhrase[]>([]);
   const [filter, setFilter] = useState<string>("all");
+  const [storageError, setStorageError] = useState(false);
 
   useEffect(() => {
-    try {
-      const data = JSON.parse(localStorage.getItem("chinese-mission-phrasebook") || "[]");
-      setItems(data);
-    } catch {
-      setItems([]);
-    }
+    setItems(readPhrasebook());
   }, []);
 
   const handleDelete = (id: string) => {
-    const updated = items.filter((item) => item.id !== id);
-    setItems(updated);
-    localStorage.setItem("chinese-mission-phrasebook", JSON.stringify(updated));
+    let updated = items;
+    const saved = updatePhrasebook((current) => {
+      updated = current.filter((item) => item.id !== id);
+      return updated;
+    });
+    setStorageError(!saved);
+    if (saved) setItems(updated);
   };
 
   const masteryLabel = (score: number) => {
@@ -61,6 +46,7 @@ export default function PhrasebookPage() {
       </div>
 
       <div className="max-w-lg mx-auto px-5 py-6 space-y-4">
+        {storageError && <p role="alert" className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700">Changes could not be saved. Your stored expressions were kept.</p>}
         {/* Info */}
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
           <div className="text-sm text-indigo-700">

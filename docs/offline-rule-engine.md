@@ -61,12 +61,23 @@ npm run build
 node tests/offline-smoke.mjs
 ```
 
-`npm test` includes the existing server-budget tests plus dialogue regression
-cases. The smoke script starts a production server on an available loopback
+`npm test` includes server-budget, dialogue, storage-shape, debug-entitlement and
+debrief-evidence regressions. The smoke script starts a production server on an available loopback
 port, forces `USE_RULE_ENGINE=true`, clears its inherited AI key, and points the
 AI base URL at an unused loopback port. It checks Chinese, pinyin and English
 conversations for every mission, then checks the rule-based debrief. It stops
 its server on success or test failure. It does not request TTS or a remote site.
+
+New chat turns record the input script and the hint level already shown when
+the answer is submitted. Selecting the example answer also counts as assistance.
+Both local and server rule-based debriefs retain this evidence. These fields
+support feedback about that session; they do not establish learning gains.
+Old sessions without hint evidence cannot be retrospectively verified.
+
+Client pages validate stored setups, collections and sessions before using
+them. Collection writes refuse malformed existing data and preserve its bytes.
+Failed writes do not display a saved state. Production ignores the development
+Premium flag; this is a temporary safeguard, not verified purchase integration.
 
 These checks verify the engine and local HTTP routes. They do not verify
 browser layout, voice recognition, TTS quality, iOS execution, configured AI

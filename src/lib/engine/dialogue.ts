@@ -30,6 +30,16 @@ export interface DialogueResponse {
 // Script detection
 // ---------------------------------------------------------------------------
 
+/** Capture the assistance already shown when this answer is submitted. */
+export function createUserTurn(id: string, rawInput: string, hintLevel: number): Turn {
+  return {
+    id, role: "user", rawInput,
+    detectedScript: detectScript(rawInput),
+    hintUsed: hintLevel,
+    timestamp: new Date().toISOString(),
+  };
+}
+
 const CJK_RANGE = /[\u4e00-\u9fff\u3400-\u4dbf]/;
 const PINYIN_TONE =
   /[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/i;
@@ -681,11 +691,12 @@ function determineCurrentStateName(
   return current;
 }
 
-function allRequiredSlotsFilled(
-  mission: Mission,
-  filledSlots: Record<string, string>,
+/** Required slot evidence is the authority for API and client completion. */
+export function isMissionComplete(
+  mission: Pick<Mission, "requiredSlots">,
+  filledSlots: readonly string[],
 ): boolean {
-  return mission.requiredSlots.every((s) => s in filledSlots);
+  return mission.requiredSlots.every((slot) => filledSlots.includes(slot));
 }
 
 // ---------------------------------------------------------------------------
@@ -741,7 +752,7 @@ export function processUserInput(
   const understood = newlyFilled.length > 0 || courtesyUnderstood;
 
   // Check completion
-  const isComplete = allRequiredSlotsFilled(mission, filledSlots);
+  const isComplete = isMissionComplete(mission, Object.keys(filledSlots));
 
   // Pick NPC reply
   let reply: NpcReply;
@@ -919,7 +930,7 @@ export function generateDebrief(
 
   // Determine result
   let result: "success" | "partial_success" | "failure";
-  if (session.status === "completed" || allRequiredSlotsFilled(mission, session.slotsFilledMap)) {
+  if (session.status === "completed" || isMissionComplete(mission, Object.keys(session.slotsFilledMap))) {
     result = score >= 0.6 ? "success" : "partial_success";
   } else {
     result = session.turns.length > 0 ? "partial_success" : "failure";
@@ -936,7 +947,7 @@ export function generateDebrief(
   if (comprehensionRate > 0.7) {
     strengths.push("Strong communication — understood most of the time");
   }
-  if (hintsUsed === 0 && totalTurns > 0) {
+  if (hintsUsed === 0 && totalTurns > 0 && userTurns.every((t) => t.hintUsed === 0)) {
     strengths.push("Completed without using hints — great independence!");
   }
   if (totalTurns <= mission.requiredSlots.length + 1) {
