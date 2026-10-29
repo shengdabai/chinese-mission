@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { processUserInput } from "../src/lib/engine/dialogue.ts";
-import { getMission } from "../src/lib/data/scenarios.ts";
+import { getMission, scenarios } from "../src/lib/data/scenarios.ts";
 
 const newSession = (mission) => ({
   id: "offline-test",
@@ -264,3 +264,95 @@ for (const text of ['我要一杯柠檬茶，不要加冰', 'wo yao yi bei cha, 
     assert.equal(processUserInput(text, mission, newSession(mission)).taskStatus, 'completed');
   });
 }
+
+for (const input of [
+  '快到了吗？', '还没到了', '还没到', '到了吗', '到了？', '到了 ?',
+  'kuài dào le ma?', 'hái méi dào le', 'dào le ma', 'dao le?',
+]) {
+  test(`m7: an arrival question or negative statement does not request a stop: ${input}`, () => {
+    const mission = getMission('m7');
+    const response = processUserInput(input, mission, newSession(mission));
+    assert.equal(response.taskStatus, 'in_progress');
+    assert.deepEqual(response.slotsFilled, []);
+    assert.deepEqual(response.missingSlots, ['stop_request']);
+  });
+}
+
+for (const input of ['到了，就在这儿停', '到了，谢谢', 'dào le, xiè xie', 'daole, xiexie']) {
+  test(`m7: an affirmative arrival or explicit stop still completes: ${input}`, () => {
+    const mission = getMission('m7');
+    assert.equal(processUserInput(input, mission, newSession(mission)).taskStatus, 'completed');
+  });
+}
+
+for (const input of ['Let me check the menu', 'Please check my order', 'A check of the menu', 'bill', 'checkplease']) {
+  test(`m3: an isolated bill/check word does not request payment: ${input}`, () => {
+    const mission = getMission('m3');
+    const response = processUserInput(input, mission, newSession(mission));
+    assert.equal(response.taskStatus, 'in_progress');
+    assert.deepEqual(response.slotsFilled, []);
+  });
+}
+
+for (const input of ['The bill, please', 'Could I have the check?', 'Check, please', 'check please', '买单', '结账']) {
+  test(`m3: an explicit bill request completes: ${input}`, () => {
+    const mission = getMission('m3');
+    assert.equal(processUserInput(input, mission, newSession(mission)).taskStatus, 'completed');
+  });
+}
+
+test('m17: 嗨 fills the greeting slot as well as being understood as courtesy', () => {
+  const mission = getMission('m17');
+  const response = processUserInput('嗨', mission, newSession(mission));
+  assert.equal(response.understood, true);
+  assert.equal(response.taskStatus, 'completed');
+  assert.deepEqual(response.slotsFilled, ['greeting']);
+});
+
+for (const greeting of ['hen gao xing ren shi ni', 'hěn gāo xìng rèn shi nǐ', 'hengaoxingrenshini', 'hěngāoxìngrènshinǐ']) {
+  test(`m11: a pinyin greeting fills only greeting and combines with a later name: ${greeting}`, () => {
+    const mission = getMission('m11');
+    const session = newSession(mission);
+    const first = processUserInput(greeting, mission, session);
+    assert.equal(first.understood, true);
+    assert.equal(first.taskStatus, 'in_progress');
+    assert.deepEqual(first.slotsFilled, ['greeting']);
+    assert.deepEqual(first.missingSlots, ['name']);
+    session.slotsFilledMap = Object.fromEntries(first.slotsFilled.map(slot => [slot, 'filled']));
+    session.currentState = first.currentState;
+    assert.equal(processUserInput('我叫小明', mission, session).taskStatus, 'completed');
+  });
+}
+
+for (const input of ['我做IT的', '我是做IT的']) {
+  test(`m13: accepts an IT occupation statement: ${input}`, () => {
+    const mission = getMission('m13');
+    assert.equal(processUserInput(input, mission, newSession(mission)).taskStatus, 'completed');
+  });
+}
+
+test('the 60 warmup conversations retain all 54 previously completing cases', () => {
+  const incompleteMissions = new Set(['m11', 'm19']);
+  let count = 0;
+  let completed = 0;
+  for (const scenario of scenarios) {
+    for (const mission of scenario.missions) {
+      for (const language of ['hanzi', 'pinyin', 'naturalEn']) {
+        const session = newSession(mission);
+        let response;
+        for (const pattern of mission.warmupPatterns) {
+          response = processUserInput(pattern[language], mission, session);
+          session.slotsFilledMap = Object.fromEntries(response.slotsFilled.map(slot => [slot, 'filled']));
+          session.currentState = response.currentState;
+        }
+        count++;
+        if (!incompleteMissions.has(mission.id)) {
+          assert.equal(response.taskStatus, 'completed', `${mission.id}: ${language}`);
+        }
+        if (response.taskStatus === 'completed') completed++;
+      }
+    }
+  }
+  assert.equal(count, 60);
+  assert.ok(completed >= 54, `${completed}/60 completed`);
+});

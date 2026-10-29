@@ -479,7 +479,7 @@ const missionDataMap: Record<string, ScenarioData> = {
   ask_for_bill: missionDialogue(
     [{
       slot: "payment_request",
-      patterns: [/买单|结账|多少钱|\bmai\s*dan\b|\bjie\s*zhang\b|\bduo\s*shao\s*qian\b|\b(?:bill|check)\b|\bhow\s+much\b/i],
+      patterns: [/买单|结账|多少钱|\bmai\s*dan\b|\bjie\s*zhang\b|\bduo\s*shao\s*qian\b|\bthe\s+(?:bill|check)\b|\bcheck(?:\s*,\s*|\s+)please\b|\bhow\s+much\b/i],
       excludePatterns: [/不(?:要|用|想|需要)\s*(?:买单|结账)|\b(?:don't|do\s+not)\s+(?:want|need)\s+(?:the\s+)?(?:bill|check)\b/i],
       value: "买单",
     }],
@@ -525,7 +525,7 @@ const missionDataMap: Record<string, ScenarioData> = {
   stop_here: missionDialogue(
     [{
       slot: "stop_request",
-      patterns: [/这里停|这儿停|停一下|停车|到了|\b(?:zhe\s*li|zher)\s*ting\b|\bting\s*(?:yi\s*xia|che)\b|\bdao\s*le\b|\b(?:stop\s+here|pull\s+over|we(?:'re|\s+are)\s+here)\b/i],
+      patterns: [/这里停|这儿停|停一下|停车|\b(?:zhe\s*li|zher)\s*ting\b|\bting\s*(?:yi\s*xia|che)\b|\b(?:stop\s+here|pull\s+over|we(?:'re|\s+are)\s+here)\b/i, /^(?:到了|dao\s*le)(?:[，,\s]*(?:谢谢|xie\s*xie))?[。！!\s]*$/i],
       excludePatterns: [/不(?:要|用|需要)(?:在)?(?:这里|这儿)?停|\bbu\s*(?:yao|yong)\s*(?:zai\s*)?(?:zhe\s*li\s*)?ting\b|\b(?:don't|do\s+not)\s+(?:stop|pull\s+over)\b/i],
       value: "stop_here",
     }],
@@ -549,7 +549,7 @@ const missionDataMap: Record<string, ScenarioData> = {
   ),
   basic_intro: missionDialogue(
     [
-      { slot: "greeting", patterns: [/你好|您好|很高兴认识你|\bni\s*hao\b|\b(?:hello|hi|nice\s+to\s+meet\s+you)\b/i], value: "greeted" },
+      { slot: "greeting", patterns: [/你好|您好|很高兴认识你|\bni\s*hao\b|\bhen\s*gao\s*xing\s*ren\s*shi\s*ni\b|\b(?:hello|hi|nice\s+to\s+meet\s+you)\b/i], value: "greeted" },
       { slot: "name", patterns: [/(?:我叫|叫我)[\p{Script=Han}a-zA-Z]+/u, /\b(?:wo\s*jiao|jiao\s*wo)\s+[a-z]+|\b(?:my\s+name\s+is|call\s+me)\s+[a-z]+/i], value: "name_provided" },
     ],
     {
@@ -564,7 +564,7 @@ const missionDataMap: Record<string, ScenarioData> = {
     { cn: "原来如此，欢迎来中国！", en: "I see. Welcome to China!" },
   ),
   what_do_you_do: missionDialogue(
-    [{ slot: "occupation", patterns: [/我是.*(?:老师|教师|学生|工程师|医生|设计师|程序员)|我在.*(?:公司|学校|医院).*(?:上班|工作)|我做IT的|\bwo\s*shi\s*(?:lao\s*shi|xue\s*sheng|gong\s*cheng\s*shi|yi\s*sheng|she\s*ji\s*shi)\b|\b(?:i\s+am|i'm)\s+(?:a|an)\s+(?:teacher|student|engineer|doctor|designer|programmer)\b|\bi\s+work\s+(?:at|in|for)\b/i], value: "occupation_provided" }],
+    [{ slot: "occupation", patterns: [/我是.*(?:老师|教师|学生|工程师|医生|设计师|程序员)|我在.*(?:公司|学校|医院).*(?:上班|工作)|我(?:是)?做IT的|\bwo\s*shi\s*(?:lao\s*shi|xue\s*sheng|gong\s*cheng\s*shi|yi\s*sheng|she\s*ji\s*shi)\b|\b(?:i\s+am|i'm)\s+(?:a|an)\s+(?:teacher|student|engineer|doctor|designer|programmer)\b|\bi\s+work\s+(?:at|in|for)\b/i], value: "occupation_provided" }],
     { occupation: { cn: "你做什么工作？", en: "What do you do?" } },
     { cn: "原来如此，很高兴了解你的工作！", en: "I see. It's nice to learn about your work!" },
   ),
@@ -595,7 +595,7 @@ const missionDataMap: Record<string, ScenarioData> = {
     { cn: "这个爱好很不错，有空我们一起吧！", en: "That's a great hobby. Let's try it together sometime!" },
   ),
   greet_colleagues: missionDialogue(
-    [{ slot: "greeting", patterns: [/你好|您好|早上好|吃了吗|周末过得怎么样|\bni\s*hao\b|\bzao\s*shang\s*hao\b|\bchi\s*le\s*ma\b|\bzhou\s*mo\s*guo\s*de\s*zen\s*me\s*yang\b|\b(?:hello|hi|good\s+morning|how\s+was\s+your\s+weekend)\b/i], value: "greeted" }],
+    [{ slot: "greeting", patterns: [/你好|您好|嗨|早上好|吃了吗|周末过得怎么样|\bni\s*hao\b|\bzao\s*shang\s*hao\b|\bchi\s*le\s*ma\b|\bzhou\s*mo\s*guo\s*de\s*zen\s*me\s*yang\b|\b(?:hello|hi|good\s+morning|how\s+was\s+your\s+weekend)\b/i], value: "greeted" }],
     { greeting: { cn: "早上好！", en: "Good morning!" } },
     { cn: "早上好！祝你今天工作顺利。", en: "Good morning! Have a good day at work." },
   ),

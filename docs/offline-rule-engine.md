@@ -70,8 +70,7 @@ its server on success or test failure. It does not request TTS or a remote site.
 
 These checks verify the engine and local HTTP routes. They do not verify
 browser layout, voice recognition, TTS quality, iOS execution, configured AI
-providers, or production deployment. Browser verification for the 2026-10-29
-pass was blocked by the sandbox's browser-process permission denial.
+providers, or production deployment.
 
 ## Extending the rules
 
