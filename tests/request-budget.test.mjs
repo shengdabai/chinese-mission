@@ -42,7 +42,13 @@ test("an oversized body is refused before any budget is used", async () => {
   assert.deepEqual(await readJsonCapped(req("4.4.4.4", '{"text":"你好"}'), "tts"), { text: "你好" });
 });
 
-test("when the shared store refuses, no provider work is allowed", async () => {
-  setQuotaStoreForTest({ kind: "upstash", take: async () => false });
+test("over-limit is 429, a store that cannot count is 503 — both block provider work", async () => {
+  setQuotaStoreForTest({ kind: "upstash", take: async () => "limit" });
   assert.equal((await checkBudget("chat", req("5.5.5.5")))?.status, 429);
+  setQuotaStoreForTest({ kind: "upstash", take: async () => "unavailable" });
+  const res = await checkBudget("chat", req("5.5.5.5"));
+  assert.equal(res?.status, 503);
+  assert.equal(res?.headers.get("Retry-After"), "30");
+  setQuotaStoreForTest({ kind: "misconfigured", take: async () => "unavailable" });
+  assert.equal((await checkBudget("tts", req("6.6.6.6")))?.status, 503);
 });

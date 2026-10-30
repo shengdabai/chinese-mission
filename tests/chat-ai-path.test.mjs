@@ -105,7 +105,7 @@ test("AI path: all required slots filled flips taskStatus to completed", async (
 });
 
 test("AI path is never reached when the budget refuses", async () => {
-  setQuotaStoreForTest({ kind: "upstash", take: async () => false });
+  setQuotaStoreForTest({ kind: "upstash", take: async () => "limit" });
   const calls = modelResponding([JSON.stringify(policyReply)]);
   const res = await POST(req({ missionId: mission.id, userInput: "你好", session }));
   assert.equal(res.status, 429);

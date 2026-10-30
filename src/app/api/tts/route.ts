@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 import { checkBudget, readJsonCapped } from "@/lib/server/request-budget";
+import { sanitizeForSsml, MAX_AUDIO_BYTES } from "@/lib/server/tts-text";
 
 // Microsoft Edge Neural Voices for zh-CN (curated short list).
 // Quality is far better than the iOS built-in Tingting compact voice.
@@ -53,12 +54,22 @@ export async function POST(request: NextRequest) {
     const tts = new MsEdgeTTS();
     await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
 
-    const stream = tts.toStream(text, { rate: rateStr });
+    // Plain text only: escaped so a caller cannot inject SSML tags or control characters.
+    const stream = tts.toStream(sanitizeForSsml(text), { rate: rateStr });
 
     // Collect to buffer (text is short, < 400 chars, no need to stream)
     const chunks: Buffer[] = [];
+    let received = 0;
     await new Promise<void>((resolve, reject) => {
-      stream.audioStream.on("data", (chunk: Buffer) => chunks.push(chunk));
+      stream.audioStream.on("data", (chunk: Buffer) => {
+        received += chunk.length;
+        if (received > MAX_AUDIO_BYTES) {
+          stream.audioStream.destroy?.();
+          reject(new Error(`audio exceeds ${MAX_AUDIO_BYTES} bytes`));
+          return;
+        }
+        chunks.push(chunk);
+      });
       stream.audioStream.on("end", () => resolve());
       stream.audioStream.on("close", () => resolve());
       stream.audioStream.on("error", (err: Error) => reject(err));

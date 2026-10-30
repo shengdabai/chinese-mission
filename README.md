@@ -60,7 +60,8 @@ Every route that spends provider capacity (`/api/chat`, `/api/debrief`, `/api/tt
 
 | Store | When | Behavior |
 |---|---|---|
-| Upstash Redis (REST) | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` set (the Vercel KV names `KV_REST_API_URL` / `KV_REST_API_TOKEN` also work) | shared across all serverless instances; if the store is configured but unreachable, requests are **refused** (fail closed) |
+| Upstash Redis (REST) | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` set (the Vercel KV names `KV_REST_API_URL` / `KV_REST_API_TOKEN` also work) | shared across all serverless instances; over budget → **429**; store unreachable or malformed reply → **503** (fail closed, distinct from a real limit so monitoring can tell them apart) |
+| Misconfigured | only one of the two variables set | every provider route answers 503 and `GET /api/health` reports `"quotaStore": "misconfigured"` — a half-configured deploy fails loudly instead of silently losing the shared budget |
 | Memory | no store configured | per-instance counters only; `GET /api/health` reports `"quotaStore": "memory"` so this is visible, not silent |
 
 Production should run with the shared store: create a Redis database in the Vercel Marketplace (Upstash, the free tier is enough), add the two variables to the project's Production environment, redeploy, then confirm `GET /api/health` returns `"quotaShared": true`.

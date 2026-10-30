@@ -29,14 +29,22 @@ export function clientId(request: Request): string {
   return ip.split(",")[0].trim() || "unknown";
 }
 
-function refusal(windowMs: number): Response {
+function overLimit(windowMs: number): Response {
   return Response.json(
     { error: "Too many requests. Please try again in a few minutes.", fallback: true },
     { status: 429, headers: { "Retry-After": String(Math.ceil(windowMs / 1000)) } },
   );
 }
 
-/** Returns an error response when the request is over budget or too large; null when it may proceed. */
+/** The budget could not be counted (shared store down or half-configured). Distinct from 429 so monitoring can tell them apart. */
+function storeUnavailable(): Response {
+  return Response.json(
+    { error: "Service temporarily unavailable. Please try again shortly.", fallback: true },
+    { status: 503, headers: { "Retry-After": "30" } },
+  );
+}
+
+/** Returns an error response when the request is over budget, too large, or cannot be counted; null when it may proceed. */
 export async function checkBudget(
   name: BudgetName,
   request: Request,
@@ -49,12 +57,12 @@ export async function checkBudget(
   }
   const store = quotaStore();
   // Per-client first, so requests a client is refused do not use up the shared budget.
-  if (!(await store.take(`budget:${name}:${clientId(request)}`, b.perClient, b.windowMs, now))) {
-    return refusal(b.windowMs);
-  }
-  if (!(await store.take(`budget:${name}:*`, b.perTotal, b.windowMs, now))) {
-    return refusal(b.windowMs);
-  }
+  const perClient = await store.take(`budget:${name}:${clientId(request)}`, b.perClient, b.windowMs, now);
+  if (perClient === "unavailable") return storeUnavailable();
+  if (perClient === "limit") return overLimit(b.windowMs);
+  const total = await store.take(`budget:${name}:*`, b.perTotal, b.windowMs, now);
+  if (total === "unavailable") return storeUnavailable();
+  if (total === "limit") return overLimit(b.windowMs);
   return null;
 }
 
