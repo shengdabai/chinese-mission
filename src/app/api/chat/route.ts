@@ -38,7 +38,7 @@ interface NpcOutput {
 const MAX_USER_INPUT = 500;
 
 export async function POST(request: NextRequest) {
-  const refused = checkBudget("chat", request);
+  const refused = await checkBudget("chat", request);
   if (refused) return refused;
   try {
     const body = await readJsonCapped<ChatRequest>(request, "chat");

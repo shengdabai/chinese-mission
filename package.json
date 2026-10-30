@@ -7,7 +7,7 @@
     "dev:turbopack": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --experimental-test-module-mocks --import ./tests/register.mjs --test tests/*.test.mjs"
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",

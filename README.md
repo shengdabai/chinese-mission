@@ -42,15 +42,56 @@ This repository supports productized learning workflows: diagnostic input, guide
 - `next.config.ts`
 - `package.json`
 
-## Quick Start
-
-Use the commands that match the current project state:
+## Run and test
 
 ```bash
-npm install
-npm run dev
-npm start
+npm ci                        # installs exactly what package-lock.json pins (official registry only)
+cp .env.example .env.local    # fill AI_API_KEY etc.; keep USE_RULE_ENGINE=true for an offline run
+npm run dev                   # http://localhost:3000
+npm test                      # node:test — request budgets, quota store, AI chat path (recorded model), TTS error body
+npm run build                 # the same production build Vercel runs
 ```
+
+npm is the only package manager for this repo: `package-lock.json` is the single lockfile, and CI fails if a `pnpm-lock.yaml` / `yarn.lock` / `bun.lock` appears, because Vercel chooses its installer from whichever lockfile it finds and would otherwise skip the audited versions.
+
+Node 22 or newer (CI uses 22). The app works without a model key: `/api/chat` and `/api/debrief` fall back to the rule engine and answer with `aiPowered: false`.
+
+## Request budgets and the shared quota store
+
+Every route that spends provider capacity (`/api/chat`, `/api/debrief`, `/api/tts`) checks a per-client and a total budget **before** calling the model or Edge TTS (`src/lib/server/request-budget.ts`). The counters live in a quota store (`src/lib/server/quota-store.ts`):
+
+| Store | When | Behavior |
+|---|---|---|
+| Upstash Redis (REST) | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` set (the Vercel KV names `KV_REST_API_URL` / `KV_REST_API_TOKEN` also work) | shared across all serverless instances; over budget → **429**; store unreachable or malformed reply → **503** (fail closed, distinct from a real limit so monitoring can tell them apart) |
+| Misconfigured | only one of the two variables set | every provider route answers 503 and `GET /api/health` reports `"quotaStore": "misconfigured"` — a half-configured deploy fails loudly instead of silently losing the shared budget |
+| Memory | no store configured | per-instance counters only; `GET /api/health` reports `"quotaStore": "memory"` so this is visible, not silent |
+
+Production should run with the shared store: create a Redis database in the Vercel Marketplace (Upstash, the free tier is enough), add the two variables to the project's Production environment, redeploy, then confirm `GET /api/health` returns `"quotaShared": true`.
+
+## Deploy, verify, roll back
+
+Production builds **only from `main`** through the GitHub → Vercel integration; do not run CLI production deploys from a feature branch. If a CLI deploy is ever needed, name the target explicitly:
+
+```bash
+vercel link --project chinese-mission --scope <team-slug>   # never a bare `vercel link`
+vercel --prod
+```
+
+Post-deploy smoke, both must pass before a release counts as done:
+
+1. `GET https://chinese-mission.vercel.app/api/health` → `ok: true`, `sha` equals the merged commit, `quotaShared: true`.
+2. `POST /api/chat` with `{"missionId":"m1","userInput":"你好","session":{"currentState":"start","slotsFilledMap":{},"turns":[],"hintLevel":0}}` → 200 and `aiPowered: true`.
+
+Roll back within 10 minutes: Vercel → Project → Deployments → pick the previous Ready production deployment → **Promote to Production** (or `vercel rollback <deployment-url> --scope <team-slug>`). There is no database, so nothing to migrate back; client state lives in the browser's localStorage.
+
+Key rotation (whenever a model key was pasted anywhere outside the secret store): create a new key at the provider, update `AI_API_KEY` in Vercel → Settings → Environment Variables (Production), redeploy, then revoke the old key and note the date in `MISSION_BUILD_LOG.md`.
+
+## Not doing (yet)
+
+- **No accounts, no login.** Progress and the phrasebook stay in the browser until a second person has completed a mission and asked for sync.
+- **No payments.** The paywall shows planned prices with disabled buttons; nothing is for sale until subscriptions are actually wired up.
+- **No new scenarios or HSK tracks** before the existing 26 missions have real usage records.
+- **No App Store submission** until the privacy policy page and the iOS privacy manifest questions are settled.
 
 ## 📖 Usage
 
