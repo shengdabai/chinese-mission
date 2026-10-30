@@ -20,6 +20,12 @@ jobs:
       - name: Install from the committed lockfile (official registry only)
         run: |
           set -euo pipefail
+          for stray in pnpm-lock.yaml yarn.lock bun.lock bun.lockb; do
+            if [ -e "$stray" ]; then
+              echo "::error::$stray is present; Vercel would install from it instead of the audited package-lock.json"
+              exit 1
+            fi
+          done
           if grep -q 'registry.npmmirror.com' package-lock.json; then
             echo "::error::package-lock.json resolves packages from a mirror; regenerate against registry.npmjs.org"
             exit 1

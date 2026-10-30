@@ -58,7 +58,7 @@ export class MisconfiguredStore implements QuotaStore {
   async take(): Promise<TakeResult> {
     if (!this.warned) {
       this.warned = true;
-      console.error("quota-store: shared store is half-configured (URL or token missing); refusing provider work");
+      console.error("quota-store: shared store is half-configured (one of the two variables is missing); refusing provider work");
     }
     return "unavailable";
   }

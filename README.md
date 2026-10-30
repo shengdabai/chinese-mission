@@ -52,6 +52,8 @@ npm test                      # node:test — request budgets, quota store, AI c
 npm run build                 # the same production build Vercel runs
 ```
 
+npm is the only package manager for this repo: `package-lock.json` is the single lockfile, and CI fails if a `pnpm-lock.yaml` / `yarn.lock` / `bun.lock` appears, because Vercel chooses its installer from whichever lockfile it finds and would otherwise skip the audited versions.
+
 Node 22 or newer (CI uses 22). The app works without a model key: `/api/chat` and `/api/debrief` fall back to the rule engine and answer with `aiPowered: false`.
 
 ## Request budgets and the shared quota store
