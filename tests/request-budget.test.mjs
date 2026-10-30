@@ -1,6 +1,7 @@
-import { test } from "node:test";
+import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { BUDGETS, checkBudget, readJsonCapped, resetBudgetsForTest } from "../src/lib/server/request-budget.ts";
+import { BUDGETS, checkBudget, readJsonCapped } from "../src/lib/server/request-budget.ts";
+import { MemoryStore, setQuotaStoreForTest } from "../src/lib/server/quota-store.ts";
 
 const req = (ip, body = "{}") =>
   new Request("https://chinese-mission.vercel.app/api/chat", {
@@ -9,34 +10,39 @@ const req = (ip, body = "{}") =>
     body,
   });
 
-test("one client is refused after its per-window budget; another client is not", () => {
-  resetBudgetsForTest();
+beforeEach(() => setQuotaStoreForTest(new MemoryStore()));
+
+test("one client is refused after its per-window budget; another client is not", async () => {
   const now = 1_000_000;
-  for (let i = 0; i < BUDGETS.chat.perClient; i++) assert.equal(checkBudget("chat", req("1.1.1.1"), now), null);
-  const refused = checkBudget("chat", req("1.1.1.1"), now);
+  for (let i = 0; i < BUDGETS.chat.perClient; i++) assert.equal(await checkBudget("chat", req("1.1.1.1"), now), null);
+  const refused = await checkBudget("chat", req("1.1.1.1"), now);
   assert.equal(refused?.status, 429);
-  assert.equal(checkBudget("chat", req("2.2.2.2"), now), null);
-  assert.equal(checkBudget("chat", req("1.1.1.1"), now + BUDGETS.chat.windowMs), null, "a new window starts fresh");
+  assert.equal(refused?.headers.get("Retry-After"), String(BUDGETS.chat.windowMs / 1000));
+  assert.equal(await checkBudget("chat", req("2.2.2.2"), now), null);
+  assert.equal(await checkBudget("chat", req("1.1.1.1"), now + BUDGETS.chat.windowMs), null, "a new window starts fresh");
 });
 
-test("the instance budget caps all clients together, and refused requests do not use it up", () => {
-  resetBudgetsForTest();
+test("the total budget caps all clients together, and refused requests do not use it up", async () => {
   const now = 2_000_000;
-  for (let i = 0; i < BUDGETS.chat.perClient * 3; i++) checkBudget("chat", req("9.9.9.9"), now);
+  for (let i = 0; i < BUDGETS.chat.perClient * 3; i++) await checkBudget("chat", req("9.9.9.9"), now);
   let allowed = BUDGETS.chat.perClient;
-  for (let i = 0; allowed < BUDGETS.chat.perInstance + 5; i++) {
-    if (checkBudget("chat", req(`10.0.${i >> 8}.${i & 255}`), now) === null) allowed++;
+  for (let i = 0; allowed < BUDGETS.chat.perTotal + 5; i++) {
+    if ((await checkBudget("chat", req(`10.0.${i >> 8}.${i & 255}`), now)) === null) allowed++;
     else break;
   }
-  assert.equal(allowed, BUDGETS.chat.perInstance);
-  assert.equal(checkBudget("chat", req("3.3.3.3"), now)?.status, 429);
+  assert.equal(allowed, BUDGETS.chat.perTotal);
+  assert.equal((await checkBudget("chat", req("3.3.3.3"), now))?.status, 429);
 });
 
 test("an oversized body is refused before any budget is used", async () => {
-  resetBudgetsForTest();
   const big = JSON.stringify({ text: "x".repeat(BUDGETS.tts.maxBodyBytes) });
-  assert.equal(checkBudget("tts", req("4.4.4.4", big))?.status, 413);
+  assert.equal((await checkBudget("tts", req("4.4.4.4", big)))?.status, 413);
   const noLength = new Request("https://x/api/tts", { method: "POST", body: big });
   assert.equal(await readJsonCapped(noLength, "tts"), null);
   assert.deepEqual(await readJsonCapped(req("4.4.4.4", '{"text":"你好"}'), "tts"), { text: "你好" });
+});
+
+test("when the shared store refuses, no provider work is allowed", async () => {
+  setQuotaStoreForTest({ kind: "upstash", take: async () => false });
+  assert.equal((await checkBudget("chat", req("5.5.5.5")))?.status, 429);
 });

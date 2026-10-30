@@ -21,7 +21,7 @@ const MAX_TEXT_LENGTH = 400;
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  const refused = checkBudget("tts", request);
+  const refused = await checkBudget("tts", request);
   if (refused) return refused;
   const body = await readJsonCapped<{ text?: string; voice?: string; rate?: number }>(request, "tts");
   if (!body) {
@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("TTS error:", error);
-    const msg = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: "TTS synthesis failed", detail: msg }, { status: 500 });
+    // Upstream detail stays in the server log; the client gets a generic body (no provider internals).
+    console.error("TTS error:", error instanceof Error ? error.message : String(error));
+    return NextResponse.json({ error: "TTS synthesis failed", fallback: true }, { status: 502 });
   }
 }

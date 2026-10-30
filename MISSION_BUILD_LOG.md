@@ -5,7 +5,7 @@
 ## 2026-05-08 阶段 1 启动
 
 ### Pre-flight 探查
-- 项目路径：`/Users/tonysheng/Desktop/项目开发/08-中文教学项目/中文使命-官网/`
+- 项目路径：`<repo-root>/`
 - 技术栈：Next.js 16 + React 19 + Tailwind 4 + TS 6
 - AI 调用链确认：`/api/chat` 和 `/api/debrief` 都通过 `src/lib/engine/ai-client.ts:callAI` 调 OpenAI 兼容 endpoint，DeepSeek 直接换 BASE_URL/MODEL 即可。`response_format: { type: "json_object" }` — DeepSeek 支持。
 - `.env.local` 已存在但仍是占位符。
@@ -105,7 +105,7 @@
 ### 阶段 2 完成（除真机 build/sign 留给用户）
 
 ### 2.9 待用户操作
-1. 终端跑：`cd "/Users/tonysheng/Desktop/项目开发/08-中文教学项目/中文使命-官网/ios/App" && open App.xcodeproj`
+1. 终端跑：`cd "<repo-root>/ios/App" && open App.xcodeproj`
 2. Xcode 打开后：
    - 选 App target → Signing & Capabilities tab
    - Team 下拉选你的 Apple Developer 账号（如果没有先登录 https://developer.apple.com 注册免费账号 7 天 provisioning）

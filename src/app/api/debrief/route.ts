@@ -43,7 +43,7 @@ interface AIDebriefOutput {
 }
 
 export async function POST(request: NextRequest) {
-  const refused = checkBudget("debrief", request);
+  const refused = await checkBudget("debrief", request);
   if (refused) return refused;
   // Parse body once, available in both try and catch
   const parsed = await readJsonCapped<DebriefRequest>(request, "debrief");
