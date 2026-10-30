@@ -1,6 +1,6 @@
 # chinese-mission
 
-Learn Chinese by doing real-world missions — order coffee, book a hotel — via AI conversation with pinyin, gloss & voice. Next.js + TS.
+Learn Chinese by doing real-world missions — order coffee, take a taxi — via AI conversation with pinyin, gloss & voice. Next.js + TS.
 
 ## Business Context
 
@@ -11,7 +11,8 @@ Learn Chinese by doing real-world missions — order coffee, book a hotel — vi
 
 ## What This Project Is For
 
-- Learn Chinese by doing real-world missions — order coffee, book a hotel — via AI conversation with pinyin, gloss & voice. Next.js + TS.
+- Learn Chinese by doing real-world missions — order coffee, take a taxi — via AI conversation with pinyin, gloss & voice. Next.js + TS.
+- 20 missions in 6 groups: café and restaurant, taxi and transport, asking directions, self-introduction, making friends, workplace basics.
 - Give users a concrete learning workflow instead of a loose collection of content.
 - Make practice, feedback, review, or recommendation steps easier to repeat.
 
@@ -90,7 +91,7 @@ Key rotation (whenever a model key was pasted anywhere outside the secret store)
 
 - **No accounts, no login.** Progress and the phrasebook stay in the browser until a second person has completed a mission and asked for sync.
 - **No payments.** The paywall shows planned prices with disabled buttons; nothing is for sale until subscriptions are actually wired up.
-- **No new scenarios or HSK tracks** before the existing 26 missions have real usage records.
+- **No new scenarios or HSK tracks** before the existing 20 missions have real usage records.
 - **No App Store submission** until the privacy policy page and the iOS privacy manifest questions are settled.
 
 ## 📖 Usage
@@ -125,7 +126,7 @@ MIT — see [LICENSE](./LICENSE) for details.
 
 # 🎯 Chinese Mission（中文使命）
 
-> **学中文,靠"做事",不靠背单词卡。** 点咖啡、订酒店、交朋友——每个"任务"都是一件真实的事,你必须真的用中文跟 AI 对话才能完成,全程配拼音、逐词注释和语音。
+> **学中文,靠"做事",不靠背单词卡。** 点咖啡、打车、交朋友——每个"任务"都是一件真实的事,你必须真的用中文跟 AI 对话才能完成,全程配拼音、逐词注释和语音。
 
 **[English](#-chinese-mission) | 中文**
 
@@ -147,11 +148,11 @@ Chinese Mission 反其道而行。你被放进一个有目标的场景,唯一的
 
 ## 它是什么
 
-一个任务驱动的沉浸式中文学习平台:6 大真实场景下的 26 个任务、一个 AI 对话伙伴,以及一整套脚手架(拼音、注释、提示、语音),让初学者从第一天起就能尝试真实对话。支持浏览器运行,并通过 Capacitor 封装为原生 iOS App。
+一个任务驱动的沉浸式中文学习平台:6 组真实场景下的 20 个任务、一个 AI 对话伙伴,以及一整套脚手架(拼音、注释、提示、语音),让初学者从第一天起就能尝试真实对话。支持浏览器运行,并通过 Capacitor 封装为原生 iOS App。
 
 ## ✨ 功能特性
 
-- **任务式学习** — 在模拟场景中完成实用任务:咖啡店、餐厅、酒店、旅行、社交、工作
+- **任务式学习** — 在模拟场景中完成实用任务:咖啡店与餐厅、打车与交通、问路、自我介绍、交朋友、职场基础
 - **AI 对话引擎** — 通过任意 OpenAI 兼容 API(OpenAI、DeepSeek、Claude 代理)驱动 NPC 对话
 - **没 API Key 也能用** — 内置规则引擎,未配置时应用照常完整可用
 - **逐词注释系统** — 每句中文拆成语块,提供拼音、字面翻译和自然英文
