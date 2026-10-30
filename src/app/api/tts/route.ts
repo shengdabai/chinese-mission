@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 import { rateLimitResponse } from "@/lib/rate-limit";
+import { checkBudget, readJsonCapped } from "@/lib/server/request-budget";
+import { sanitizeForSsml, MAX_AUDIO_BYTES } from "@/lib/server/tts-text";
 
 // Microsoft Edge Neural Voices for zh-CN (curated short list).
 // Quality is far better than the iOS built-in Tingting compact voice.
@@ -22,13 +24,15 @@ const VOICE_ID_PATTERN = /^[a-z]{2,3}-[A-Z]{2}(-[A-Za-z]+)?-[A-Za-z]+Neural$/;
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  // Two layers before any synthesis: the per-minute in-memory burst limit (rate-limit.ts),
+  // then the shared per-client and total budget (request-budget.ts).
   const limited = rateLimitResponse(request, "tts");
   if (limited) return limited;
+  const refused = await checkBudget("tts", request);
+  if (refused) return refused;
 
-  let body: { text?: unknown; voice?: unknown; rate?: unknown };
-  try {
-    body = await request.json();
-  } catch {
+  const body = await readJsonCapped<{ text?: unknown; voice?: unknown; rate?: unknown }>(request, "tts");
+  if (!body) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
@@ -70,12 +74,22 @@ export async function POST(request: NextRequest) {
     const tts = new MsEdgeTTS();
     await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
 
-    const stream = tts.toStream(text, { rate: rateStr });
+    // Plain text only: escaped so a caller cannot inject SSML tags or control characters.
+    const stream = tts.toStream(sanitizeForSsml(text), { rate: rateStr });
 
     // Collect to buffer (text is short, < 400 chars, no need to stream)
     const chunks: Buffer[] = [];
+    let received = 0;
     await new Promise<void>((resolve, reject) => {
-      stream.audioStream.on("data", (chunk: Buffer) => chunks.push(chunk));
+      stream.audioStream.on("data", (chunk: Buffer) => {
+        received += chunk.length;
+        if (received > MAX_AUDIO_BYTES) {
+          stream.audioStream.destroy?.();
+          reject(new Error(`audio exceeds ${MAX_AUDIO_BYTES} bytes`));
+          return;
+        }
+        chunks.push(chunk);
+      });
       stream.audioStream.on("end", () => resolve());
       stream.audioStream.on("close", () => resolve());
       stream.audioStream.on("error", (err: Error) => reject(err));
@@ -95,7 +109,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("TTS error:", error);
-    return NextResponse.json({ error: "TTS synthesis failed" }, { status: 500 });
+    // Upstream detail stays in the server log; the client gets a generic body (no provider internals).
+    console.error("TTS error:", error instanceof Error ? error.message : String(error));
+    return NextResponse.json({ error: "TTS synthesis failed", fallback: true }, { status: 502 });
   }
 }

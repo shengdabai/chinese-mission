@@ -6,6 +6,7 @@ import { getMission } from "@/lib/data/scenarios";
 import { validateDebriefBody } from "@/lib/engine/validate-request";
 import { rateLimitResponse } from "@/lib/rate-limit";
 import type { Session, DebriefResult, GlossItem } from "@/lib/types";
+import { checkBudget, readJsonCapped } from "@/lib/server/request-budget";
 
 interface DebriefRequest {
   missionId: string;
@@ -44,16 +45,15 @@ interface AIDebriefOutput {
 }
 
 export async function POST(request: NextRequest) {
+  // Two layers before any provider work: the per-minute in-memory burst limit (rate-limit.ts),
+  // then the shared per-client and total budget (request-budget.ts).
   const limited = rateLimitResponse(request, "debrief");
   if (limited) return limited;
+  const refused = await checkBudget("debrief", request);
+  if (refused) return refused;
 
-  // Parse body once, available in both try and catch
-  let raw: unknown;
-  try {
-    raw = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
+  // Parse body once (size-capped), available in both try and catch
+  const raw = await readJsonCapped<unknown>(request, "debrief");
   const invalid = validateDebriefBody(raw);
   if (invalid) {
     return NextResponse.json({ error: invalid }, { status: 400 });

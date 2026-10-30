@@ -27,9 +27,11 @@ coverage/
 # turbo
 .turbo
 
-# lock files
+# lock files: only package-lock.json is tracked. Vercel picks the package manager from the
+# lockfile it finds, and a stray pnpm-lock.yaml made production install an older, vulnerable set.
 bun.lock
-package-lock.json
+pnpm-lock.yaml
+yarn.lock
 
 # misc
 .DS_Store
@@ -40,3 +42,19 @@ next-env.d.ts
 .omc/
 .gstack/
 .vercel
+
+# capacitor www build output (served via server.url in production)
+www/
+
+# Codex governance: local secrets and machine state
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_dsa
+.npmrc
+.codex/
+.claude/local/

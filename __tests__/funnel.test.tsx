@@ -119,19 +119,22 @@ describe("Paywall", () => {
     expect(events()).toEqual([{ event: "paywall_view", props: {} }]);
   });
 
-  it("counts upgrade_click for each plan button and leaves close buttons uncounted", async () => {
+  // main keeps the paywall plan buttons disabled (nothing is on sale), so they count nothing;
+  // interest is counted on the /pricing page instead.
+  it("keeps the plan buttons disabled and uncounted, and leaves close buttons uncounted", async () => {
     const onClose = vi.fn();
     await render(<Paywall onClose={onClose} resetsAt="" used={3} limit={3} />);
-    await click(container.querySelector<HTMLElement>('[data-pricing-id="cm_yearly"]')!);
-    await click(container.querySelector<HTMLElement>('[data-pricing-id="cm_monthly"]')!);
-    expect(events().slice(1)).toEqual([
-      { event: "upgrade_click", props: { plan: "cm_yearly", source: "paywall" } },
-      { event: "upgrade_click", props: { plan: "cm_monthly", source: "paywall" } },
-    ]);
+    const yearly = container.querySelector<HTMLButtonElement>('[data-pricing-id="cm_yearly"]')!;
+    const monthly = container.querySelector<HTMLButtonElement>('[data-pricing-id="cm_monthly"]')!;
+    expect(yearly.disabled).toBe(true);
+    expect(monthly.disabled).toBe(true);
+    await click(yearly);
+    await click(monthly);
+    expect(events()).toEqual([{ event: "paywall_view", props: {} }]);
 
     await click(byText("稍后再说", "button"));
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(events()).toHaveLength(3);
+    expect(events()).toHaveLength(1);
   });
 
   it("states the real number of attempts used and the local reset time", async () => {

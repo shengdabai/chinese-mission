@@ -95,9 +95,10 @@ describe("POST /api/tts error responses", () => {
   it("does not echo internal error details back to the client", async () => {
     failWith = "wss://speech.example.internal handshake failed: token=abc123";
     const res = await POST(req({ text: "你好" }));
-    expect(res.status).toBe(500);
+    // main answers an upstream synthesis failure with 502 and a generic body (tests/tts-error-body.test.mjs agrees).
+    expect(res.status).toBe(502);
     const body = await res.json();
-    expect(body).toEqual({ error: "TTS synthesis failed" });
+    expect(body).toEqual({ error: "TTS synthesis failed", fallback: true });
     expect(JSON.stringify(body)).not.toContain("abc123");
   });
 });

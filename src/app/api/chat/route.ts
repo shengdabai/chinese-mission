@@ -6,6 +6,7 @@ import { getMission } from "@/lib/data/scenarios";
 import { validateChatBody } from "@/lib/engine/validate-request";
 import { rateLimitResponse } from "@/lib/rate-limit";
 import type { Mission, Session } from "@/lib/types";
+import { checkBudget, readJsonCapped } from "@/lib/server/request-budget";
 
 interface ChatRequest {
   missionId: string;
@@ -37,15 +38,15 @@ interface NpcOutput {
 }
 
 export async function POST(request: NextRequest) {
+  // Two layers before any provider work: the per-minute in-memory burst limit (rate-limit.ts),
+  // then the shared per-client and total budget (request-budget.ts).
   const limited = rateLimitResponse(request, "chat");
   if (limited) return limited;
+  const refused = await checkBudget("chat", request);
+  if (refused) return refused;
 
-  let raw: unknown;
-  try {
-    raw = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
+  // Size-capped read; null (bad JSON or too large) fails validation as "Invalid request body".
+  const raw = await readJsonCapped<unknown>(request, "chat");
   const invalid = validateChatBody(raw);
   if (invalid) {
     return NextResponse.json({ error: invalid }, { status: 400 });

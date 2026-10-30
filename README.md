@@ -1,156 +1,191 @@
-# Chinese Mission
+# chinese-mission
 
-An immersive, task-based Chinese language learning platform. Learners complete real-world missions (ordering coffee, taking a taxi, making friends) through AI-powered conversations with instant gloss support, pinyin annotation, and voice interaction.
+Learn Chinese by doing real-world missions — order coffee, take a taxi — via AI conversation with pinyin, gloss & voice. Next.js + TS.
 
-Built with Next.js, TypeScript, and Tailwind CSS.
+## Business Context
 
-## Features
+- **Category:** education product
+- **Audience:** learners, teachers, parents, and education operators who need a clearer learning or exam-prep workflow.
+- **Repository status:** Public repository. Keep examples, docs, and issues free of credentials, private data, and machine-specific paths.
+- **Topics:** ai, capacitor, chinese-learning, conversation, language-learning, mandarin, nextjs, typescript
 
-- **Mission-based learning**: Complete practical tasks in simulated real-world scenarios (café and restaurant, taxi and transport, asking directions, self-introduction, making friends, workplace basics)
-- **AI dialogue engine**: Chat with an NPC powered by any OpenAI-compatible API (OpenAI, Claude via proxy, DeepSeek, etc.)
-- **Rule-based fallback**: Built-in dialogue engine works without AI when no API key is configured
-- **Gloss line system**: Every Chinese sentence is broken into chunks with pinyin, literal gloss, and natural English translation
-- **Adaptive hints**: Multi-level hint system (keywords -> half-sentence -> full reference) to scaffold learners
-- **Voice input/output**: Push-to-talk and text-to-speech support for pronunciation practice
-- **Warmup exercises**: Pattern drills before each mission to build confidence
-- **Debrief & review**: Post-mission analysis with strengths, corrections, and transfer patterns
-- **Phrasebook**: Save and review vocabulary from completed missions
-- **User profiles**: Track progress across scenarios with skill profiling
+## What This Project Is For
 
-## Tech Stack
+- Learn Chinese by doing real-world missions — order coffee, take a taxi — via AI conversation with pinyin, gloss & voice. Next.js + TS.
+- 20 missions in 6 groups: café and restaurant, taxi and transport, asking directions, self-introduction, making friends, workplace basics.
+- Give users a concrete learning workflow instead of a loose collection of content.
+- Make practice, feedback, review, or recommendation steps easier to repeat.
 
-- **Framework**: Next.js 16 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS 4
-- **AI**: OpenAI-compatible chat completions API
-- **Voice**: Web Speech API (browser-native)
+## Where It Fits
 
-## Getting Started
+This repository supports productized learning workflows: diagnostic input, guided practice, review loops, and clearer handoff between learner, teacher, and software.
 
-### Prerequisites
+## Technical Overview
 
-- Node.js 18+
-- npm or bun
+- **Primary language:** TypeScript
+- **Detected stack:** TypeScript, Node.js, Next.js, React, Tailwind CSS
+- **Default branch:** `main`
+- **Visibility:** `PUBLIC`
+- **License:** MIT License
 
-### Installation
+## Repository Map
 
-```bash
-npm install
-```
+- `src`
+- `public`
+- `docs`
+- `.env.example`
+- `LICENSE`
+- `MISSION_BUILD_LOG.md`
+- `README.md`
+- `SECURITY.md`
+- `capacitor.config.ts`
+- `ios`
+- `next.config.ts`
+- `package.json`
 
-### Environment Setup
-
-Copy the example env file and configure your AI API:
-
-```bash
-cp .env.example .env.local
-```
-
-Edit `.env.local`:
-
-```
-AI_API_KEY=your-api-key-here
-AI_BASE_URL=https://api.openai.com/v1
-AI_MODEL=gpt-4o-mini
-USE_RULE_ENGINE=false
-```
-
-The app works without an AI API key using the built-in rule-based engine. Set `USE_RULE_ENGINE=true` to force rule-based mode.
-
-### Development
+## Run and test
 
 ```bash
-npm run dev
+npm ci                        # installs exactly what package-lock.json pins (official registry only)
+cp .env.example .env.local    # fill AI_API_KEY etc.; keep USE_RULE_ENGINE=true for an offline run
+npm run dev                   # http://localhost:3000
+npm test                      # node:test — request budgets, quota store, AI chat path (recorded model), TTS error body
+npm run build                 # the same production build Vercel runs
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+npm is the only package manager for this repo: `package-lock.json` is the single lockfile, and CI fails if a `pnpm-lock.yaml` / `yarn.lock` / `bun.lock` appears, because Vercel chooses its installer from whichever lockfile it finds and would otherwise skip the audited versions.
 
-### Production Build
+Node 22 or newer (CI uses 22). The app works without a model key: `/api/chat` and `/api/debrief` fall back to the rule engine and answer with `aiPowered: false`.
+
+## Request budgets and the shared quota store
+
+Every route that spends provider capacity (`/api/chat`, `/api/debrief`, `/api/tts`) checks a per-client and a total budget **before** calling the model or Edge TTS (`src/lib/server/request-budget.ts`). The counters live in a quota store (`src/lib/server/quota-store.ts`):
+
+| Store | When | Behavior |
+|---|---|---|
+| Upstash Redis (REST) | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` set (the Vercel KV names `KV_REST_API_URL` / `KV_REST_API_TOKEN` also work) | shared across all serverless instances; over budget → **429**; store unreachable or malformed reply → **503** (fail closed, distinct from a real limit so monitoring can tell them apart) |
+| Misconfigured | only one of the two variables set | every provider route answers 503 and `GET /api/health` reports `"quotaStore": "misconfigured"` — a half-configured deploy fails loudly instead of silently losing the shared budget |
+| Memory | no store configured | per-instance counters only; `GET /api/health` reports `"quotaStore": "memory"` so this is visible, not silent |
+
+Production should run with the shared store: create a Redis database in the Vercel Marketplace (Upstash, the free tier is enough), add the two variables to the project's Production environment, redeploy, then confirm `GET /api/health` returns `"quotaShared": true`.
+
+## Deploy, verify, roll back
+
+Production builds **only from `main`** through the GitHub → Vercel integration; do not run CLI production deploys from a feature branch. If a CLI deploy is ever needed, name the target explicitly:
 
 ```bash
-npm run build
-npm start
+vercel link --project chinese-mission --scope <team-slug>   # never a bare `vercel link`
+vercel --prod
 ```
 
-## Project Structure
+Post-deploy smoke, both must pass before a release counts as done:
 
-```
-src/
-  app/                    # Next.js App Router pages
-    onboarding/           # Welcome & user setup
-    missions/             # Mission browser
-    missions/[id]/        # Individual mission flows
-      warmup/             # Pre-mission pattern drills
-      chat/               # Main dialogue interaction
-      debrief/            # Post-mission review
-    phrasebook/           # Saved vocabulary
-    profile/              # User profile & progress
-    teaching-pipeline/    # Teaching pipeline visualization
-    api/                  # API routes (chat, debrief)
-  components/             # Reusable UI components
-  lib/
-    data/                 # Scenario & mission definitions
-    engine/               # AI client, dialogue engine, gloss, prompts
-    hooks/                # Custom React hooks (voice, etc.)
-    types.ts              # TypeScript type definitions
-    store.ts              # Client-side state management
-```
+1. `GET https://chinese-mission.vercel.app/api/health` → `ok: true`, `sha` equals the merged commit, `quotaShared: true`.
+2. `POST /api/chat` with `{"missionId":"m1","userInput":"你好","session":{"currentState":"start","slotsFilledMap":{},"turns":[],"hintLevel":0}}` → 200 and `aiPowered: true`.
+
+Roll back within 10 minutes: Vercel → Project → Deployments → pick the previous Ready production deployment → **Promote to Production** (or `vercel rollback <deployment-url> --scope <team-slug>`). There is no database, so nothing to migrate back; client state lives in the browser's localStorage.
+
+Key rotation (whenever a model key was pasted anywhere outside the secret store): create a new key at the provider, update `AI_API_KEY` in Vercel → Settings → Environment Variables (Production), redeploy, then revoke the old key and note the date in `MISSION_BUILD_LOG.md`.
+
+## Not doing (yet)
+
+- **No accounts, no login.** Progress and the phrasebook stay in the browser until a second person has completed a mission and asked for sync.
+- **No payments.** The paywall shows planned prices with disabled buttons; nothing is for sale until subscriptions are actually wired up.
+- **No new scenarios or HSK tracks** before the existing 20 missions have real usage records.
+- **No App Store submission** until the privacy policy page and the iOS privacy manifest questions are settled.
+
+## 📖 Usage
+
+1. **Onboard** — pick your level and learning style.
+2. **Choose a mission** — e.g. *order a hot latte* in the café scenario.
+3. **Warm up** — run a quick pattern drill.
+4. **Chat** — talk to the AI NPC in Chinese to complete the task. Tap any line for pinyin + gloss; use hints if you stall; speak or type.
+5. **Debrief** — review your score, strengths, corrections, and transfer patterns.
+6. **Save & track** — bank new phrases to your phrasebook and watch your profile grow.
+
+## 🗺️ Status
+
+Actively developed and **live in production** at [chinese-mission.vercel.app](https://chinese-mission.vercel.app). Web app is fully functional; iOS build (Capacitor) is wired up. Built in public — feedback and ideas welcome.
+
+## 🤝 Connect
+
+If this resonates, the best way to support it is to **[⭐ Star this repo](https://github.com/shengdabai/chinese-mission)** and **[Follow @shengdabai](https://github.com/shengdabai)** — I build AI + Chinese-teaching tools in public, and stars genuinely help me decide what to build next.
+
+**More tools in the same family:**
+- [hsk-prep-platform](https://github.com/shengdabai/hsk-prep-platform) — structured HSK exam preparation
+- [LinguaLens](https://github.com/shengdabai/LinguaLens) — language learning through a different lens
+- [ChineseThinking](https://github.com/shengdabai/ChineseThinking) — learn to *think* in Chinese, not just translate
 
 ## License
 
-Private project. All rights reserved.
+MIT — see [LICENSE](./LICENSE) for details.
 
 ---
 
-# Chinese Mission (中文)
+# 中文
 
-一个沉浸式、任务驱动的中文学习平台。学习者通过 AI 驱动的对话完成真实场景任务（点咖啡、订酒店、交朋友），配合即时词汇注释、拼音标注和语音交互。
+# 🎯 Chinese Mission（中文使命）
 
-基于 Next.js、TypeScript 和 Tailwind CSS 构建。
+> **学中文,靠"做事",不靠背单词卡。** 点咖啡、打车、交朋友——每个"任务"都是一件真实的事,你必须真的用中文跟 AI 对话才能完成,全程配拼音、逐词注释和语音。
 
-## 功能特性
+**[English](#-chinese-mission) | 中文**
 
-- **任务式学习**：在模拟的真实场景中完成实用任务（咖啡店、餐厅、酒店、旅行、社交、工作）
-- **AI 对话引擎**：通过 OpenAI 兼容 API（OpenAI、Claude 代理、DeepSeek 等）驱动的 NPC 对话
-- **规则引擎后备**：未配置 API 密钥时，内置对话引擎同样可用
-- **逐词注释系统**：每句中文拆分为语块，提供拼音、字面翻译和自然英文翻译
-- **自适应提示**：多级提示系统（关键词 -> 半句 -> 完整参考）逐步引导学习者
-- **语音输入/输出**：按住说话和文字转语音，支持发音练习
-- **热身练习**：每个任务前的句型操练，建立信心
-- **任务复盘**：任务完成后的分析，展示优势、纠错和迁移模式
-- **词汇本**：保存和复习已完成任务的词汇
-- **用户档案**：跨场景追踪学习进度和技能画像
+[![最近提交](https://img.shields.io/github/last-commit/shengdabai/chinese-mission)](https://github.com/shengdabai/chinese-mission/commits)
+[![Stars](https://img.shields.io/github/stars/shengdabai/chinese-mission?style=social)](https://github.com/shengdabai/chinese-mission/stargazers)
+[![关注 @shengdabai](https://img.shields.io/github/followers/shengdabai?style=social)](https://github.com/shengdabai)
 
-## 技术栈
+**[▶ 体验在线 Demo](https://chinese-mission.vercel.app)**
 
-- **框架**：Next.js 16（App Router）
-- **语言**：TypeScript
-- **样式**：Tailwind CSS 4
-- **AI**：OpenAI 兼容的聊天补全 API
-- **语音**：Web Speech API（浏览器原生）
+---
 
-## 快速开始
+## 为什么做它
 
-### 环境要求
+大多数 App 教的是"关于中文的知识"——孤立的词、语法表、连续打卡。可一旦真站在咖啡馆里,你还是会愣住,因为你从没在真实压力下"用过"它。
 
-- Node.js 18+
-- npm 或 bun
+Chinese Mission 反其道而行。你被放进一个有目标的场景,唯一的出路就是把话说清楚。AI 扮演咖啡师、前台、新认识的朋友;你边读边说,卡住时用自适应提示解围,结束后拿到一份复盘——哪里做得好,哪里要改。
 
-### 安装
+由一位拥有 6000+ 学员的中文老师打造,围绕"人真正破冰一门语言"的方式设计。
+
+## 它是什么
+
+一个任务驱动的沉浸式中文学习平台:6 组真实场景下的 20 个任务、一个 AI 对话伙伴,以及一整套脚手架(拼音、注释、提示、语音),让初学者从第一天起就能尝试真实对话。支持浏览器运行,并通过 Capacitor 封装为原生 iOS App。
+
+## ✨ 功能特性
+
+- **任务式学习** — 在模拟场景中完成实用任务:咖啡店与餐厅、打车与交通、问路、自我介绍、交朋友、职场基础
+- **AI 对话引擎** — 通过任意 OpenAI 兼容 API(OpenAI、DeepSeek、Claude 代理)驱动 NPC 对话
+- **没 API Key 也能用** — 内置规则引擎,未配置时应用照常完整可用
+- **逐词注释系统** — 每句中文拆成语块,提供拼音、字面翻译和自然英文
+- **自适应提示** — 多级脚手架(关键词 → 半句 → 完整参考),永远不会真的卡死
+- **语音输入与输出** — 按住说话识别 + 文字转语音,练发音
+- **热身操练** — 每个任务前快速句型练习,建立信心
+- **任务复盘** — 完成后给出分析:优势、纠错、可迁移的句型模式
+- **词汇本** — 保存已完成任务的词汇,随时复习
+- **进度档案** — 跨场景追踪表现,生成技能画像
+- **原生 iOS App** — 通过 Capacitor 封装,真机体验
+
+## 🧱 技术栈
+
+- **框架** — Next.js 16(App Router)
+- **语言** — TypeScript
+- **样式** — Tailwind CSS 4
+- **AI** — OpenAI 兼容的聊天补全 API
+- **语音** — Web Speech API(浏览器)+ Capacitor 语音识别(iOS)
+- **移动端** — Capacitor(iOS)
+
+## 🚀 快速开始
+
+**环境要求:** Node.js 18+ 与 npm(或 bun)。
 
 ```bash
+# 1. 安装依赖
 npm install
-```
 
-### 环境配置
-
-复制示例环境文件并配置 AI API：
-
-```bash
+# 2. 配置 AI API(可选,见下)
 cp .env.example .env.local
 ```
 
-编辑 `.env.local`：
+编辑 `.env.local`:
 
 ```
 AI_API_KEY=your-api-key-here
@@ -159,23 +194,51 @@ AI_MODEL=gpt-4o-mini
 USE_RULE_ENGINE=false
 ```
 
-未配置 AI API 密钥时，应用可使用内置规则引擎运行。设置 `USE_RULE_ENGINE=true` 强制使用规则模式。
-
-### 开发
+> 没有 API Key?没关系。应用开箱即用内置规则引擎。即使填了 Key,也可设 `USE_RULE_ENGINE=true` 强制使用规则模式。
 
 ```bash
+# 3. 启动开发服务器
 npm run dev
 ```
 
-打开 [http://localhost:3000](http://localhost:3000)。
-
-### 生产构建
+打开 **[http://localhost:3000](http://localhost:3000)**。
 
 ```bash
+# 生产构建
 npm run build
-npm start
 ```
 
-## 许可证
+| Command | Purpose |
+|---|---|
+| `npm install` | Install project dependencies. |
+| `npm run dev` | next dev --webpack |
+| `npm start` | next start |
+| `npm run build` | next build |
 
-私有项目。保留所有权利。
+## Operating Notes
+
+- Keep real credentials out of the repository. Use local environment files, GitHub repository secrets, or the deployment platform secret manager.
+- If a `.env.example` file exists, treat it as documentation only; never commit filled-in `.env` files.
+- Before publishing screenshots, demos, or client examples, remove private names, internal paths, account IDs, and API endpoints.
+- The `Repository Hygiene` workflow is a lightweight guardrail, not a replacement for product-specific tests.
+
+## Delivery Checklist
+
+- [ ] README describes the user, business outcome, and operating boundary.
+- [ ] Setup or preview commands are current and do not rely on private machine state.
+- [ ] No real secrets, private user data, or machine-local state are tracked.
+- [ ] Screenshots, demos, or sample outputs are safe to share publicly when the repository is public.
+- [ ] Product-specific tests or smoke checks are documented before production use.
+
+## Roadmap
+
+- Tighten the fastest path from clone to useful demo.
+- Add project-specific screenshots, sample outputs, or a short walkthrough where useful.
+- Promote repeated manual steps into scripts, tests, or documented workflows.
+- Keep security, privacy, and licensing boundaries explicit as the project evolves.
+
+## Maintainer Notes
+
+Maintained by [Tony Sheng](https://github.com/shengdabai). This README is written as a business-facing handoff: it should help a future collaborator, client, or reviewer understand why the repository exists, how to inspect it, and what must be true before it is reused or shipped.
+
+MIT 协议——详见 [LICENSE](./LICENSE)。

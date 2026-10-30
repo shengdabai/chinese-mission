@@ -7,11 +7,9 @@ const config: CapacitorConfig = {
   server: {
     url: "https://chinese-mission.vercel.app",
     cleartext: false,
-    allowNavigation: [
-      "chinese-mission.vercel.app",
-      "*.vercel.app",
-      "api.deepseek.com",
-    ],
+    // Exact production origin only: a wildcard would let any Vercel tenant page run inside the native bridge,
+    // and the model API is called from the server, never from the WebView.
+    allowNavigation: ["chinese-mission.vercel.app"],
   },
   ios: {
     contentInset: "automatic",
