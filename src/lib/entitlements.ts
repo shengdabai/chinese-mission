@@ -77,14 +77,13 @@ function writeQuota(q: DailyQuota): boolean {
 }
 
 /**
- * Check premium entitlement. Currently uses a localStorage debug flag for development;
- * production must replace this with `await Purchases.getCustomerInfo()` from RevenueCat.
+ * The local debug flag is only for development. Until verified entitlements are
+ * integrated, production must never grant Premium from browser storage.
  */
 export function isPremium(): boolean {
-  if (typeof window === "undefined") return false;
-  // The debug flag is a QA toggle only. In production builds it must not grant
-  // premium: anyone can write localStorage from DevTools.
-  if (process.env.NODE_ENV === "production") return false;
+  // The debug flag is a QA toggle for local development only. Outside
+  // development it must not grant premium: anyone can write localStorage from DevTools.
+  if (process.env.NODE_ENV !== "development" || typeof window === "undefined") return false;
   try {
     return localStorage.getItem(PREMIUM_KEY) === "true";
   } catch {

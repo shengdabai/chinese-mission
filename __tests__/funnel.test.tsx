@@ -186,7 +186,7 @@ describe("debrief page", () => {
   beforeEach(() => {
     localStorage.setItem(
       `chinese-mission-session-${mission.id}`,
-      JSON.stringify({ turns: [], filledSlots: [], hintUsageCount: 0 }),
+      JSON.stringify({ turns: [], filledSlots: mission.requiredSlots, hintUsageCount: 0 }), // the page only grades completed missions
     );
   });
 

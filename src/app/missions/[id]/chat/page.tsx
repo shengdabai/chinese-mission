@@ -5,6 +5,8 @@ import ChatBubble from "@/components/ChatBubble";
 import HintSheet from "@/components/HintSheet";
 import PushToTalkButton from "@/components/PushToTalkButton";
 import { useVoice } from "@/lib/hooks/useVoice";
+import { createUserTurn, isMissionComplete } from "@/lib/engine/dialogue";
+import { createHintEvidence } from "@/lib/hint-evidence";
 import type { Mission, Turn } from "@/lib/types";
 
 interface DialogueResponse {
@@ -39,6 +41,7 @@ export default function ChatPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const turnIdCounter = useRef(1);
   const lastSpokenTurnId = useRef<string | null>(null);
+  const hintEvidence = useRef(createHintEvidence());
 
   // Track session data for debrief
   const sessionDataRef = useRef<{
@@ -103,12 +106,7 @@ export default function ChatPage() {
     setInput("");
     setIsLoading(true);
 
-    const userTurn: Turn = {
-      id: `t${turnIdCounter.current++}`,
-      role: "user",
-      rawInput: userInput,
-      timestamp: new Date().toISOString(),
-    };
+    const userTurn = createUserTurn(`t${turnIdCounter.current++}`, userInput, hintEvidence.current.consume());
     setTurns((prev) => [...prev, userTurn]);
 
     // Process through dialogue engine (API first, fallback to local)
@@ -166,9 +164,10 @@ export default function ChatPage() {
 
       // Update state
       const newFilledSlots = [...new Set([...filledSlots, ...response.slotsFilled])];
+      const completed = isMissionComplete(mission, newFilledSlots);
       setFilledSlots(newFilledSlots);
       setCurrentState(response.currentState);
-      setTaskStatus(response.taskStatus);
+      setTaskStatus(completed ? "completed" : "in_progress");
 
       // Track session data
       sessionDataRef.current.allSlotsFilled = newFilledSlots;
@@ -186,7 +185,7 @@ export default function ChatPage() {
       const npcTurn: Turn = {
         id: `t${turnIdCounter.current++}`,
         role: "npc",
-        rawInput: response.npcReplyCn,
+        rawInput: response.npcReplyCn ?? "",
         npcReplyCn: response.npcReplyCn,
         npcReplyEn: response.npcReplyEn,
         understood: response.understood,
@@ -200,7 +199,7 @@ export default function ChatPage() {
       setTurns((prev) => [...prev, npcTurn]);
 
       // Check completion
-      if (response.taskStatus === "completed") {
+      if (completed) {
         // Save session data for debrief
         localStorage.setItem(
           `chinese-mission-session-${mission.id}`,
@@ -232,17 +231,22 @@ export default function ChatPage() {
     inputRef.current?.focus();
   };
 
-  const handleHint = async () => {
+  const recordHintView = (level: number) => {
+    hintEvidence.current.view(level);
+    sessionDataRef.current.hintUsageCount = hintEvidence.current.usageCount;
+  };
+
+  const handleHint = () => {
     const newLevel = Math.min(hintLevel + 1, 4);
     setHintLevel(newLevel);
     setShowHint(true);
-    sessionDataRef.current.hintUsageCount += 1;
+    recordHintView(newLevel);
   };
 
   const handleStuck = () => {
     setHintLevel(4);
     setShowHint(true);
-    sessionDataRef.current.hintUsageCount += 2;
+    recordHintView(4);
 
     // Add system message
     const systemTurn: Turn = {
@@ -345,7 +349,10 @@ export default function ChatPage() {
               <p className="text-sm text-slate-400">Try responding in Chinese, pinyin, or English</p>
               {mission.warmupPatterns[0] && (
                 <button
-                  onClick={() => setInput(mission.warmupPatterns[0].hanzi)}
+                  onClick={() => {
+                    setInput(mission.warmupPatterns[0].hanzi);
+                    recordHintView(4);
+                  }}
                   className="inline-block px-4 py-2 bg-white border border-indigo-200 rounded-xl text-sm text-indigo-600 hover:bg-indigo-50 transition-colors"
                 >
                   Try: &ldquo;{mission.warmupPatterns[0].hanzi}&rdquo;
@@ -444,7 +451,13 @@ export default function ChatPage() {
             </div>
             <div className="flex gap-2 mt-2">
               <button
-                onClick={() => { setShowHint(!showHint); if (!showHint && hintLevel === 0) setHintLevel(1); }}
+                onClick={() => {
+                  setShowHint(!showHint);
+                  if (!showHint) {
+                    setHintLevel(Math.max(hintLevel, 1));
+                    recordHintView(Math.max(hintLevel, 1));
+                  }
+                }}
                 className="text-xs px-3 py-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200"
               >
                 {showHint ? "Hide hint" : `Hint (L${hintLevel})`}

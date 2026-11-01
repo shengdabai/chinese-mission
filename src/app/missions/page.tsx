@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getQuotaSummary } from "@/lib/entitlements";
+import { safeParseJSON } from "@/lib/utils";
+import { isStoredUser, isStringArray, type StoredUser } from "@/lib/storage";
 
 interface ScenarioData {
   id: string;
@@ -32,26 +34,13 @@ export default function MissionsPage() {
 
   useEffect(() => {
     setMounted(true);
-    const userData = localStorage.getItem("chinese-mission-user");
+    const userData = safeParseJSON<StoredUser | null>("chinese-mission-user", null, isStoredUser);
     if (!userData) {
       router.replace("/onboarding");
       return;
     }
-    let parsed: { goal?: string };
-    try {
-      parsed = JSON.parse(userData);
-    } catch {
-      parsed = {};
-    }
-    setUserGoal(parsed.goal || "survival");
-
-    let completed: string[];
-    try {
-      completed = JSON.parse(localStorage.getItem("chinese-mission-completed") || "[]");
-    } catch {
-      completed = [];
-    }
-    setCompletedMissions(completed);
+    setUserGoal(userData.goal);
+    setCompletedMissions(safeParseJSON<string[]>("chinese-mission-completed", [], isStringArray));
 
     import("@/lib/data/scenarios").then((mod) => {
       setScenarios(mod.scenarios);
