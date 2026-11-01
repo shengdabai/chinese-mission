@@ -10,7 +10,9 @@
     "dev:turbopack": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-test-module-mocks --import ./tests/register.mjs --test tests/*.test.mjs"
+    "test": "npm run test:unit && npm run test:node",
+    "test:unit": "vitest run",
+    "test:node": "node --experimental-test-module-mocks --import ./tests/register.mjs --test tests/*.test.mjs"
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",
@@ -29,6 +31,8 @@
     "typescript": "^6.0.2"
   },
   "devDependencies": {
-    "@types/node": "25.5.0"
+    "@types/node": "25.5.0",
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.7"
   }
 }

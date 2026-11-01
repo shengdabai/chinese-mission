@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DebriefCard from "@/components/DebriefCard";
+import { track } from "@/lib/track";
 import type { Mission, DebriefResult, GlossItem, Turn } from "@/lib/types";
 
 export default function DebriefPage() {
@@ -94,6 +95,11 @@ export default function DebriefPage() {
 
   const [savedIndices, setSavedIndices] = useState<Set<number>>(new Set());
 
+  // Counts the result screen once per debrief, whether it came from the API or the local engine.
+  useEffect(() => {
+    if (debrief && mission) track("result_view", { result: debrief.result, mission_id: mission.id });
+  }, [debrief, mission]);
+
   const handleSaveExpression = (index: number) => {
     if (!debrief || !mission) return;
     const pattern: GlossItem = debrief.transferPatterns[index];
@@ -149,6 +155,7 @@ export default function DebriefPage() {
       <div className="max-w-lg mx-auto px-5 py-6">
         <DebriefCard
           debrief={debrief}
+          missionTitle={mission.titleEn}
           savedIndices={savedIndices}
           onRetry={() => router.push(`/missions/${mission.id}/chat`)}
           onNextMission={() => {

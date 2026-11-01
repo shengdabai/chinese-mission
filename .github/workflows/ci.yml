@@ -31,7 +31,9 @@ jobs:
             exit 1
           fi
           npm ci --no-audit --no-fund
-      - name: Unit and integration tests (budgets, quota store, AI path, TTS error body)
+      - name: Type check
+        run: npx tsc --noEmit
+      - name: Unit and integration tests (vitest suites, then budgets, quota store, AI path, TTS error body)
         run: npm test
       - name: Production build
         run: npm run build
