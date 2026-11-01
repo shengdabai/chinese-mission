@@ -7,6 +7,7 @@ import { normalizeTransferPatterns } from "../src/lib/debrief-patterns.ts";
 import { isPhrasebook } from "../src/lib/storage.ts";
 import { getMission } from "../src/lib/data/scenarios.ts";
 import { createUserTurn, generateDebrief, isMissionComplete } from "../src/lib/engine/dialogue.ts";
+import { validateChatBody, validateDebriefBody } from "../src/lib/engine/validate-request.ts";
 
 test("completion requires every required slot, independent of policy status", () => {
   const mission = getMission("m1");
@@ -76,6 +77,8 @@ function route(name, outputs) {
     "@/lib/data/scenarios": { getMission },
     "@/lib/server/request-budget": { checkBudget: () => null, readJsonCapped: (req) => req.json() },
     "@/lib/debrief-patterns": { normalizeTransferPatterns },
+    "@/lib/engine/validate-request": { validateChatBody, validateDebriefBody },
+    "@/lib/rate-limit": { rateLimitResponse: () => null },
   };
   const exports = {};
   new Function("require", "exports", "process", outputText)((name) => {

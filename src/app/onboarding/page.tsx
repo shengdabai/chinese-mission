@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-type Goal = "survival" | "social" | "work" | "travel";
+// No travel goal: there are no travel or hotel missions. Old profiles that stored "travel" still load (see lib/types.ts).
+type Goal = "survival" | "social" | "work";
 type Level = "A0" | "A1" | "A2";
 type Mode = "text" | "voice" | "mixed";
 
@@ -10,7 +11,6 @@ const goals: { value: Goal; label: string; icon: string; desc: string }[] = [
   { value: "survival", label: "Survival in China", icon: "🏠", desc: "Order food, take taxis, ask for directions" },
   { value: "social", label: "Social / Friends", icon: "👋", desc: "Introduce yourself, make friends, chat" },
   { value: "work", label: "Work / Business", icon: "💼", desc: "Office greetings, meetings, collaboration" },
-  { value: "travel", label: "Travel", icon: "✈️", desc: "Hotels, sightseeing, shopping" },
 ];
 
 const levels: { value: Level; label: string; desc: string }[] = [

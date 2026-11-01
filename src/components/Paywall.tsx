@@ -1,19 +1,33 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { track } from "@/lib/track";
 
 interface PaywallProps {
   onClose: () => void;
   resetsAt: string;
+  /** Free attempts debited today (an attempt is debited when a mission starts, not when it is completed). */
+  used: number;
+  limit: number;
 }
 
+// Planned prices only: there is no purchase flow yet. The plan buttons are disabled and say "未开售".
 const PRICING = {
   monthly: { price: "¥28", per: "/month", id: "cm_monthly" },
   yearly: { price: "¥168", per: "/year", id: "cm_yearly", note: "省 50%" },
 };
 
-export function Paywall({ onClose, resetsAt }: PaywallProps) {
-  const resetDate = resetsAt ? new Date(resetsAt).toLocaleDateString("zh-CN", { month: "long", day: "numeric" }) : "";
+export function Paywall({ onClose, resetsAt, used, limit }: PaywallProps) {
+  // resetsAt is the next local midnight (or the next UTC midnight for a quota record written before that change).
+  const resetTime = resetsAt
+    ? new Date(resetsAt).toLocaleString("zh-CN", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
+    : "";
+
+  // The paywall is mounted only while it is shown, so mounting is the view.
+  useEffect(() => {
+    track("paywall_view");
+  }, []);
 
   return (
     <div
@@ -37,16 +51,19 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
           今日免费次数已用完
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600">
-          已完成 3 次任务挑战，{resetDate} 重置免费额度
+          今天已用 {used}/{limit} 次免费任务{resetTime ? `，${resetTime} 重置` : ""}
           <br />
-          升级解锁无限对话练习
+          订阅尚未开售，下面是计划中的价格，现在还不能购买
         </p>
 
         <div className="mt-6 space-y-3">
           <button
             type="button"
             data-pricing-id={PRICING.yearly.id}
-            className="relative w-full rounded-2xl border-2 border-indigo-500 bg-indigo-50 p-4 text-left transition hover:bg-indigo-100"
+            disabled
+            aria-disabled="true"
+            title="订阅尚未开售"
+            className="relative w-full cursor-not-allowed rounded-2xl border-2 border-indigo-200 bg-indigo-50/60 p-4 text-left opacity-80"
           >
             <div className="absolute -top-2 left-4 rounded-full bg-indigo-500 px-2 py-0.5 text-xs font-semibold text-white">
               {PRICING.yearly.note}
@@ -58,13 +75,16 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
                 <span className="text-sm font-normal text-slate-500">{PRICING.yearly.per}</span>
               </span>
             </div>
-            <p className="mt-1 text-xs text-slate-600">≈ ¥14/月，相当于 5 折</p>
+            <p className="mt-1 text-xs text-slate-600">≈ ¥14/月 · 未开售</p>
           </button>
 
           <button
             type="button"
             data-pricing-id={PRICING.monthly.id}
-            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-slate-300 hover:bg-slate-50"
+            disabled
+            aria-disabled="true"
+            title="订阅尚未开售"
+            className="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-white p-4 text-left opacity-80"
           >
             <div className="flex items-baseline justify-between">
               <span className="text-base font-semibold text-slate-900">月度订阅</span>
@@ -73,14 +93,14 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
                 <span className="text-sm font-normal text-slate-500">{PRICING.monthly.per}</span>
               </span>
             </div>
-            <p className="mt-1 text-xs text-slate-600">随时取消</p>
+            <p className="mt-1 text-xs text-slate-600">随时取消 · 未开售</p>
           </button>
         </div>
 
         <ul className="mt-6 space-y-2 text-sm text-slate-700">
           <li className="flex items-start gap-2">
             <span className="text-emerald-500">✓</span>
-            <span>无限次任务挑战</span>
+            <span>Premium 开售后：不受每天 3 次的限制</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-emerald-500">✓</span>
@@ -88,7 +108,7 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
           </li>
           <li className="flex items-start gap-2">
             <span className="text-emerald-500">✓</span>
-            <span>语音输入 + 发音评测</span>
+            <span>语音输入</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-emerald-500">✓</span>
@@ -98,10 +118,8 @@ export function Paywall({ onClose, resetsAt }: PaywallProps) {
 
         <p className="mt-6 text-center text-xs text-slate-400">
           <Link href="/profile" className="underline" onClick={onClose}>
-            恢复购买
+            查看学习进度
           </Link>
-          {" · "}
-          订阅协议 · 隐私政策
         </p>
 
         <button

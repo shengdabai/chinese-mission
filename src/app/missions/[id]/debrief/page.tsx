@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DebriefCard from "@/components/DebriefCard";
+import { track } from "@/lib/track";
 import type { Mission, DebriefResult, GlossItem } from "@/lib/types";
 import { safeParseJSON } from "@/lib/utils";
 import { isStoredSession, isStringArray, updatePhrasebook, updateStoredArray, type StoredSession } from "@/lib/storage";
@@ -79,6 +80,11 @@ export default function DebriefPage() {
 
   const [savedIndices, setSavedIndices] = useState<Set<number>>(new Set());
 
+  // Counts the result screen once per debrief, whether it came from the API or the local engine.
+  useEffect(() => {
+    if (debrief && mission) track("result_view", { result: debrief.result, mission_id: mission.id });
+  }, [debrief, mission]);
+
   const handleSaveExpression = (index: number) => {
     if (!debrief || !mission) return;
     const pattern: GlossItem = debrief.transferPatterns[index];
@@ -125,6 +131,7 @@ export default function DebriefPage() {
         {storageError && <p role="alert" className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700 mb-4">Progress or expressions could not be saved. Existing data was kept.</p>}
         <DebriefCard
           debrief={debrief}
+          missionTitle={mission.titleEn}
           savedIndices={savedIndices}
           onRetry={() => router.push(`/missions/${mission.id}/chat`)}
           onNextMission={() => {

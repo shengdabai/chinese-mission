@@ -27,8 +27,11 @@ coverage/
 # turbo
 .turbo
 
-# lock files (package-lock.json is tracked: Vercel installs with npm and must get the audited versions)
+# lock files: only package-lock.json is tracked. Vercel picks the package manager from the
+# lockfile it finds, and a stray pnpm-lock.yaml made production install an older, vulnerable set.
 bun.lock
+pnpm-lock.yaml
+yarn.lock
 
 # misc
 .DS_Store

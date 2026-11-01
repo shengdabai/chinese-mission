@@ -1,9 +1,14 @@
 "use client";
+import { useState } from "react";
 import GlossLine from "./GlossLine";
+import { shareResult } from "@/lib/share";
+import { track } from "@/lib/track";
 import type { DebriefResult } from "@/lib/types";
 
 interface DebriefCardProps {
   debrief: DebriefResult;
+  /** Mission name used in the shared message; the message leaves the task out when absent. */
+  missionTitle?: string;
   onRetry: () => void;
   onNextMission: () => void;
   onSaveExpression: (index: number) => void;
@@ -12,6 +17,7 @@ interface DebriefCardProps {
 
 export default function DebriefCard({
   debrief,
+  missionTitle,
   onRetry,
   onNextMission,
   onSaveExpression,
@@ -24,6 +30,15 @@ export default function DebriefCard({
   };
 
   const cfg = resultConfig[debrief.result];
+  const [shareNote, setShareNote] = useState("");
+
+  const handleShare = async () => {
+    track("share_click", { result: debrief.result });
+    setShareNote("");
+    const outcome = await shareResult({ score: debrief.score, missionTitle });
+    if (outcome === "copied") setShareNote("Copied to clipboard");
+    else if (outcome === "failed") setShareNote("Could not share. Please try again.");
+  };
 
   return (
     <div className="space-y-5">
@@ -33,6 +48,16 @@ export default function DebriefCard({
         <div className={`text-xl font-bold ${cfg.color}`}>{cfg.label}</div>
         <div className="text-sm text-slate-500 mt-1">
           Score: {Math.round(debrief.score * 100)}%
+        </div>
+        <button
+          type="button"
+          onClick={handleShare}
+          className="mt-4 min-h-11 rounded-xl border border-slate-200 bg-white px-6 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+        >
+          Share
+        </button>
+        <div role="status" aria-live="polite" className="mt-2 min-h-4 text-xs text-slate-500">
+          {shareNote}
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 # chinese-mission
 
-Learn Chinese by doing real-world missions — order coffee, book a hotel — via AI conversation with pinyin, gloss & voice. Next.js + TS.
+Learn Chinese by doing real-world missions — order coffee, take a taxi — via AI conversation with pinyin, gloss & voice. Next.js + TS.
 
 ## Business Context
 
@@ -11,7 +11,8 @@ Learn Chinese by doing real-world missions — order coffee, book a hotel — vi
 
 ## What This Project Is For
 
-- Learn Chinese by doing real-world missions — order coffee, book a hotel — via AI conversation with pinyin, gloss & voice. Next.js + TS.
+- Learn Chinese by doing real-world missions — order coffee, take a taxi — via AI conversation with pinyin, gloss & voice. Next.js + TS.
+- 20 missions in 6 groups: café and restaurant, taxi and transport, asking directions, self-introduction, making friends, workplace basics.
 - Give users a concrete learning workflow instead of a loose collection of content.
 - Make practice, feedback, review, or recommendation steps easier to repeat.
 
@@ -42,15 +43,56 @@ This repository supports productized learning workflows: diagnostic input, guide
 - `next.config.ts`
 - `package.json`
 
-## Quick Start
-
-Use the commands that match the current project state:
+## Run and test
 
 ```bash
-npm install
-npm run dev
-npm start
+npm ci                        # installs exactly what package-lock.json pins (official registry only)
+cp .env.example .env.local    # fill AI_API_KEY etc.; keep USE_RULE_ENGINE=true for an offline run
+npm run dev                   # http://localhost:3000
+npm test                      # node:test — request budgets, quota store, AI chat path (recorded model), TTS error body
+npm run build                 # the same production build Vercel runs
 ```
+
+npm is the only package manager for this repo: `package-lock.json` is the single lockfile, and CI fails if a `pnpm-lock.yaml` / `yarn.lock` / `bun.lock` appears, because Vercel chooses its installer from whichever lockfile it finds and would otherwise skip the audited versions.
+
+Node 22 or newer (CI uses 22). The app works without a model key: `/api/chat` and `/api/debrief` fall back to the rule engine and answer with `aiPowered: false`.
+
+## Request budgets and the shared quota store
+
+Every route that spends provider capacity (`/api/chat`, `/api/debrief`, `/api/tts`) checks a per-client and a total budget **before** calling the model or Edge TTS (`src/lib/server/request-budget.ts`). The counters live in a quota store (`src/lib/server/quota-store.ts`):
+
+| Store | When | Behavior |
+|---|---|---|
+| Upstash Redis (REST) | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` set (the Vercel KV names `KV_REST_API_URL` / `KV_REST_API_TOKEN` also work) | shared across all serverless instances; over budget → **429**; store unreachable or malformed reply → **503** (fail closed, distinct from a real limit so monitoring can tell them apart) |
+| Misconfigured | only one of the two variables set | every provider route answers 503 and `GET /api/health` reports `"quotaStore": "misconfigured"` — a half-configured deploy fails loudly instead of silently losing the shared budget |
+| Memory | no store configured | per-instance counters only; `GET /api/health` reports `"quotaStore": "memory"` so this is visible, not silent |
+
+Production should run with the shared store: create a Redis database in the Vercel Marketplace (Upstash, the free tier is enough), add the two variables to the project's Production environment, redeploy, then confirm `GET /api/health` returns `"quotaShared": true`.
+
+## Deploy, verify, roll back
+
+Production builds **only from `main`** through the GitHub → Vercel integration; do not run CLI production deploys from a feature branch. If a CLI deploy is ever needed, name the target explicitly:
+
+```bash
+vercel link --project chinese-mission --scope <team-slug>   # never a bare `vercel link`
+vercel --prod
+```
+
+Post-deploy smoke, both must pass before a release counts as done:
+
+1. `GET https://chinese-mission.vercel.app/api/health` → `ok: true`, `sha` equals the merged commit, `quotaShared: true`.
+2. `POST /api/chat` with `{"missionId":"m1","userInput":"你好","session":{"currentState":"start","slotsFilledMap":{},"turns":[],"hintLevel":0}}` → 200 and `aiPowered: true`.
+
+Roll back within 10 minutes: Vercel → Project → Deployments → pick the previous Ready production deployment → **Promote to Production** (or `vercel rollback <deployment-url> --scope <team-slug>`). There is no database, so nothing to migrate back; client state lives in the browser's localStorage.
+
+Key rotation (whenever a model key was pasted anywhere outside the secret store): create a new key at the provider, update `AI_API_KEY` in Vercel → Settings → Environment Variables (Production), redeploy, then revoke the old key and note the date in `MISSION_BUILD_LOG.md`.
+
+## Not doing (yet)
+
+- **No accounts, no login.** Progress and the phrasebook stay in the browser until a second person has completed a mission and asked for sync.
+- **No payments.** The paywall shows planned prices with disabled buttons; nothing is for sale until subscriptions are actually wired up.
+- **No new scenarios or HSK tracks** before the existing 20 missions have real usage records.
+- **No App Store submission** until the privacy policy page and the iOS privacy manifest questions are settled.
 
 ## 📖 Usage
 
@@ -84,7 +126,7 @@ MIT — see [LICENSE](./LICENSE) for details.
 
 # 🎯 Chinese Mission（中文使命）
 
-> **学中文,靠"做事",不靠背单词卡。** 点咖啡、订酒店、交朋友——每个"任务"都是一件真实的事,你必须真的用中文跟 AI 对话才能完成,全程配拼音、逐词注释和语音。
+> **学中文,靠"做事",不靠背单词卡。** 点咖啡、打车、交朋友——每个"任务"都是一件真实的事,你必须真的用中文跟 AI 对话才能完成,全程配拼音、逐词注释和语音。
 
 **[English](#-chinese-mission) | 中文**
 
@@ -106,11 +148,11 @@ Chinese Mission 反其道而行。你被放进一个有目标的场景,唯一的
 
 ## 它是什么
 
-一个任务驱动的沉浸式中文学习平台:6 大真实场景下的 26 个任务、一个 AI 对话伙伴,以及一整套脚手架(拼音、注释、提示、语音),让初学者从第一天起就能尝试真实对话。支持浏览器运行,并通过 Capacitor 封装为原生 iOS App。
+一个任务驱动的沉浸式中文学习平台:6 组真实场景下的 20 个任务、一个 AI 对话伙伴,以及一整套脚手架(拼音、注释、提示、语音),让初学者从第一天起就能尝试真实对话。支持浏览器运行,并通过 Capacitor 封装为原生 iOS App。
 
 ## ✨ 功能特性
 
-- **任务式学习** — 在模拟场景中完成实用任务:咖啡店、餐厅、酒店、旅行、社交、工作
+- **任务式学习** — 在模拟场景中完成实用任务:咖啡店与餐厅、打车与交通、问路、自我介绍、交朋友、职场基础
 - **AI 对话引擎** — 通过任意 OpenAI 兼容 API(OpenAI、DeepSeek、Claude 代理)驱动 NPC 对话
 - **没 API Key 也能用** — 内置规则引擎支持 20 个现有任务的常见表达；词汇与验证范围见[规则引擎说明](./docs/offline-rule-engine.md)
 - **逐词注释系统** — 每句中文拆成语块,提供拼音、字面翻译和自然英文
