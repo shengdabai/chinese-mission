@@ -16,9 +16,9 @@
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",
-    "@capacitor/cli": "^8.3.3",
-    "@capacitor/core": "^8.3.3",
-    "@capacitor/ios": "^8.3.3",
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/ios": "^8.6.0",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
